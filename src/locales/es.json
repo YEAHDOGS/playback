@@ -1,0 +1,54 @@
+{
+  "app": {
+    "title": "Playback",
+    "by": "por DOGS",
+    "version": "v1.2.0"
+  },
+  "controls": {
+    "master": "Principal",
+    "bpm": "BPM",
+    "low": "Bajos",
+    "mid": "Medios",
+    "high": "Agudos",
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "cue": "Cue",
+    "sync": "Sincro",
+    "pitch": "Tono",
+    "volume": "Volumen",
+    "crossfader": "Crossfader",
+    "pitch_range": "Rango",
+    "hot_cue": "Hot Cue"
+  },
+  "library": {
+    "search": "Buscar título de pista o artista...",
+    "drag_drop": "Arrastre y suelte archivos locales (MP3/WAV) aquí, o doble clic para cargar",
+    "header": "Biblioteca de Pistas",
+    "title": "Título",
+    "artist": "Artista",
+    "duration": "Duración",
+    "load_left": "Cargar Deck 1",
+    "load_right": "Cargar Deck 2",
+    "local_file": "Archivo Local"
+  },
+  "midi": {
+    "title": "Estado del Controlador MIDI",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "no_device": "Sin controlador MIDI conectado. Usando audio web."
+  },
+  "deck": {
+    "empty": "Sin Pista Cargada",
+    "elapsed": "Transcurrido",
+    "remaining": "Restante",
+    "scratch_mode": "Modo Scratch"
+  },
+  "settings": {
+    "header": "Ajustes",
+    "theme": "Modo de Tema",
+    "theme_night": "Noche (Rojo/Negro)",
+    "theme_daytime": "Día (Blanco Hielo)",
+    "language": "Idioma",
+    "close": "Cerrar"
+  }
+}

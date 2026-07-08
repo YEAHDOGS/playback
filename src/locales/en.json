@@ -1,0 +1,54 @@
+{
+  "app": {
+    "title": "Playback",
+    "by": "by DOGS",
+    "version": "v1.2.0"
+  },
+  "controls": {
+    "master": "Master",
+    "bpm": "BPM",
+    "low": "Low",
+    "mid": "Mid",
+    "high": "High",
+    "play": "Play",
+    "pause": "Pause",
+    "cue": "Cue",
+    "sync": "Sync",
+    "pitch": "Pitch",
+    "volume": "Volume",
+    "crossfader": "Crossfader",
+    "pitch_range": "Range",
+    "hot_cue": "Hot Cue"
+  },
+  "library": {
+    "search": "Search track title or artist...",
+    "drag_drop": "Drag & Drop local audio files (MP3/WAV) here, or double-click to load",
+    "header": "Track Library",
+    "title": "Title",
+    "artist": "Artist",
+    "duration": "Duration",
+    "load_left": "Load Deck 1",
+    "load_right": "Load Deck 2",
+    "local_file": "Local File"
+  },
+  "midi": {
+    "title": "MIDI Controller Status",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "no_device": "No MIDI device connected. Playing via web audio."
+  },
+  "deck": {
+    "empty": "No Track Loaded",
+    "elapsed": "Elapsed",
+    "remaining": "Remaining",
+    "scratch_mode": "Scratch Mode"
+  },
+  "settings": {
+    "header": "Settings",
+    "theme": "Theme Mode",
+    "theme_night": "Night (Red/Black)",
+    "theme_daytime": "Daytime (Icy White)",
+    "language": "Language",
+    "close": "Close"
+  }
+}

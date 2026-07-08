@@ -1,63 +1,112 @@
-// Custom SCSS styles go here
-// Tailwind utility classes are available from app.css
+// Playback Custom Global SCSS Styles
 @use "./styles/variables" as *;
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&display=swap');
 
 body {
+  background-color: var(--bg-app);
+  color: var(--color-text);
+  font-family: $font-family-base;
   margin: 0;
   padding: 0;
   width: 100vw;
-  /* Use dvh (dynamic viewport height) so the background fills correctly on
-       mobile even when the browser address bar is visible */
   height: 100dvh;
   min-height: 100vh;
-  /* fallback for browsers without dvh support */
-  overflow-x: hidden;
-  overflow-y: hidden;
+  overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
-  -ms-user-select: none;
-  -o-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-drag: none;
+  transition: background-color $transition-normal, color $transition-normal;
 }
 
-/* ── Custom Global Scrollbars (Batman Beyond Theme: Black, White, Red) ── */
-
-/* Webkit browsers (Chrome, Edge, Safari, Opera) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+// ── Global Typography Styles ──
+.font-display {
+  font-family: $font-family-display;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-app, #050508);
-  border-left: 1px solid rgba(var(--color-neon-red-rgb, 255, 51, 68), 0.15);
-  border-top: 1px solid rgba(var(--color-neon-red-rgb, 255, 51, 68), 0.15);
+.text-glow {
+  text-shadow: 0 0 8px var(--color-neon-red-glow);
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-neon-red, #ff3344);
-  border: 2px solid var(--bg-app, #050508);
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(0, 230, 118, 0.4);
+}
+
+// ── Custom Panels & Cards ──
+.panel-border {
+  border: 1px solid var(--border-color);
+  transition: border-color $transition-fast, background-color $transition-normal;
+
+  &:hover {
+    border-color: rgba(var(--color-neon-red), 0.3);
+  }
+}
+
+.panel-border-active {
+  border: 1px solid var(--color-neon-red);
+  box-shadow: 0 0 10px var(--color-neon-red-glow);
+}
+
+// ── DJ Mixer Custom Knobs & Sliders ──
+.fader-track {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text, #ffffff);
-  border-color: var(--color-neon-red, #ff3344);
+.fader-thumb {
+  background: var(--color-text);
+  border: 1px solid var(--color-neon-red);
+  box-shadow: 0 0 8px var(--color-neon-red-glow);
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+    background: var(--color-neon-red);
+  }
 }
 
-/* Firefox standard styling */
+// ── DJ Platters (Jog Wheels) Rotating Effect ──
+@keyframes rotate-jog {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.jog-platter-rotating {
+  animation: rotate-jog 2.5s linear infinite;
+}
+
+// ── Custom Scrollbars ──
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neon-red-dim);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--color-neon-red);
+  }
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-neon-red, #ff3344) var(--bg-app, #050508);
+  scrollbar-color: var(--color-neon-red-dim) var(--bg-app);
 }
 
-/* Hide scrollbars but keep scrolling functionality */
+// Hide scrollbars but keep scrolling functionality
 .scrollbar-none {
   scrollbar-width: none !important;
 
@@ -66,4 +115,9 @@ body {
     width: 0 !important;
     height: 0 !important;
   }
+}
+
+// ── LED Meter Animations ──
+.led-active {
+  box-shadow: 0 0 4px currentColor;
 }

@@ -1,0 +1,54 @@
+// Playback Theme Styling Tokens using CSS Custom Properties for Dynamic Theming
+
+:root {
+  // ── Default "Night" Theme Variables (Black, White, Neon Red) ──
+  --bg-app: #030305;
+  --bg-card: #0b0b0e;
+  --bg-panel: #101015;
+  --bg-input: #15151c;
+
+  --color-text: #ffffff;
+  --color-text-muted: #838590;
+  --color-text-dim: #4c4e58;
+
+  --color-neon-red: #ff2a3b;
+  --color-neon-red-hover: #ff5261;
+  --color-neon-red-dim: #8b111a;
+  --color-neon-red-glow: rgba(255, 42, 59, 0.4);
+  --color-neon-red-glow-subtle: rgba(255, 42, 59, 0.15);
+
+  --border-color: #1f2128;
+  --border-glow-color: rgba(255, 42, 59, 0.25);
+
+  // LED lights
+  --color-led-green: #00e676;
+  --color-led-yellow: #ffd600;
+  --color-led-red: #d50000;
+}
+
+// ── "Daytime" Theme Variables (Icey White / Light Slate) ──
+:global(body.theme-daytime) {
+  --bg-app: #eef2f6; // Icy light slate/white background
+  --bg-card: #ffffff; // White panels
+  --bg-panel: #f8fafc; // Off-white secondary panels
+  --bg-input: #e2e8f0; // Light gray inputs
+
+  --color-text: #0f172a; // Slate-900 dark text
+  --color-text-muted: #475569; // Slate-600 secondary text
+  --color-text-dim: #94a3b8; // Slate-400 dim text
+
+  --color-neon-red: #d91b2c; // Slightly darker red for contrast on white
+  --color-neon-red-hover: #ef4444;
+  --color-neon-red-dim: #fee2e2;
+  --color-neon-red-glow: rgba(217, 27, 44, 0.2);
+  --color-neon-red-glow-subtle: rgba(217, 27, 44, 0.08);
+
+  --border-color: #cbd5e1; // Slate-300 borders
+  --border-glow-color: rgba(217, 27, 44, 0.12);
+}
+
+// SCSS Fonts and Transitions variables
+$font-family-display: "Orbitron", sans-serif;
+$font-family-base: "Inter", sans-serif;
+$transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+$transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
