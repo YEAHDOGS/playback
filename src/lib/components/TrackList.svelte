@@ -7,6 +7,7 @@
   let {
     onLoadTrack = () => {}, // callback: (deckId, track)
     onEnqueue = () => {},   // callback: (track) — add to the session queue
+    onEnqueueNext = () => {}, // callback: (track) — insert right after the current queue track
     onTracksChange = () => {}, // callback: (tracks) — full library incl. uploads
     defaultDeck = 'deck1'   // deck that double-click loads into (per-column)
   } = $props();
@@ -184,6 +185,13 @@
                     onclick={() => onEnqueue(track)}
                   >
                     <Plus class="w-3 h-3" />Q
+                  </button>
+                  <button
+                    class="px-2 py-0.5 text-[9px] font-display font-semibold uppercase tracking-wider rounded border border-[var(--border-color)] hover:border-[#ff2a3b] hover:text-[#ff2a3b] bg-[var(--bg-input)] flex items-center gap-0.5"
+                    title={$t('queue.play_next')}
+                    onclick={() => onEnqueueNext(track)}
+                  >
+                    <Play class="w-3 h-3" />Q
                   </button>
                   <button 
                     class="px-2 py-0.5 text-[9px] font-display font-semibold uppercase tracking-wider rounded border border-[var(--border-color)] hover:border-[#ff2a3b] hover:text-[#ff2a3b] bg-[var(--bg-input)]"

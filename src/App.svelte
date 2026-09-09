@@ -115,6 +115,10 @@
     if (queue) queue.add(track);
   }
 
+  function enqueueNextTrack(track) {
+    if (queue) queue.addNext(track);
+  }
+
   function registerLibraryTracks(source, tracks) {
     // Keep only session-live uploads (demo catalog ids are canonical in
     // lib/catalog.js); snapshot resolution needs the live File refs.
@@ -381,6 +385,7 @@
               defaultDeck="deck1"
               onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
               onEnqueue={(track) => enqueueTrack(track)}
+              onEnqueueNext={(track) => enqueueNextTrack(track)}
               onTracksChange={(tracks) => registerLibraryTracks('deck1', tracks)}
             />
           </div>
@@ -446,6 +451,7 @@
               defaultDeck="deck2"
               onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
               onEnqueue={(track) => enqueueTrack(track)}
+              onEnqueueNext={(track) => enqueueNextTrack(track)}
               onTracksChange={(tracks) => registerLibraryTracks('deck2', tracks)}
             />
           </div>

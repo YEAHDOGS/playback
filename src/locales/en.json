@@ -58,7 +58,8 @@
     "enqueue": "Add to queue",
     "dropped": "{count} saved track(s) were removed — they are no longer in the library.",
     "move_up": "Move up",
-    "move_down": "Move down"
+    "move_down": "Move down",
+    "play_next": "Play next in queue"
   },
   "settings": {
     "header": "Settings",
