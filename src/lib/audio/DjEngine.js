@@ -65,10 +65,13 @@ export default class DjEngine {
   }
 
   /**
-   * Set the master output volume
+   * Set the master output volume. Non-finite input (NaN/undefined/Infinity)
+   * is rejected: it would poison masterVolume and throw when written to an
+   * AudioParam, leaving the UI slider bound to a NaN state.
    * @param {number} vol - 0.0 to 1.0
    */
   setMasterVolume(vol) {
+    if (!Number.isFinite(vol)) return;
     this.masterVolume = Math.max(0, Math.min(1, vol));
     if (this.masterGain) {
       this.masterGain.gain.setValueAtTime(this.masterVolume, this.audioContext.currentTime);
@@ -77,10 +80,16 @@ export default class DjEngine {
   }
 
   /**
-   * Set crossfader position
+   * Set crossfader position. Non-finite input (NaN/undefined/Infinity) is
+   * rejected: without this, one bad value (e.g. from a MIDI/controller
+   * hiccup) would set this.crossfader to NaN, throw in
+   * updateCrossfaderGains() via setValueAtTime(NaN), and every subsequent
+   * keyboard nudge (engine.crossfader +/- step) would stay NaN forever,
+   * unbinding the crossfader slider in the UI.
    * @param {number} val - -1.0 (Full Left) to +1.0 (Full Right)
    */
   setCrossfader(val) {
+    if (!Number.isFinite(val)) return;
     this.crossfader = Math.max(-1.0, Math.min(1.0, val));
     this.updateCrossfaderGains();
     this.notifyEngineChange();
@@ -91,12 +100,16 @@ export default class DjEngine {
    * unit-testable without a Web Audio context.
    * Constant power sum (gainL^2 + gainR^2 = 1) prevents volume drops in
    * the center position.
+   * Sanitizes its input: non-finite values collapse to center (0.0) and
+   * out-of-range values are clamped, so the returned gains are ALWAYS
+   * finite numbers in [0, 1] — safe to write to any AudioParam and free
+   * of per-channel clipping risk regardless of channel count.
    * @param {number} crossfader - -1.0 (full left) to +1.0 (full right)
    * @returns {{ gainL: number, gainR: number }}
    */
   static calculateCrossfaderGains(crossfader) {
     // Map -1..1 to 0..1 range
-    const norm = (crossfader + 1.0) / 2.0;
+    const norm = (Math.max(-1.0, Math.min(1.0, Number.isFinite(crossfader) ? crossfader : 0.0)) + 1.0) / 2.0;
 
     // Equal-power crossfade curve
     // Left gain = cos(x * pi/2)
@@ -111,7 +124,7 @@ export default class DjEngine {
    * Applies the equal-power crossfader gains to the audio graph.
    */
   updateCrossfaderGains() {
-    if (!this.crossfaderGainL || !this.crossfaderGainR) return;
+    if (!this.crossfaderGainL || !this.crossfaderGainR || !this.audioContext) return;
 
     const { gainL, gainR } = DjEngine.calculateCrossfaderGains(this.crossfader);
     this.crossfaderGainL.gain.setValueAtTime(gainL, this.audioContext.currentTime);

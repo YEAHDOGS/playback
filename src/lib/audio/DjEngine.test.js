@@ -107,4 +107,89 @@ describe('DjEngine crossfader audio-graph wiring (mocked nodes)', () => {
     expect(() => engine.setCrossfader(0.75)).not.toThrow();
     expect(engine.crossfader).toBeCloseTo(0.75, 5);
   });
+
+  it('should not write to the graph when nodes exist but the context is missing', () => {
+    const engine = new DjEngine();
+    engine.crossfaderGainL = mockGainNode();
+    engine.crossfaderGainR = mockGainNode();
+    // audioContext deliberately left unset
+    expect(() => engine.setCrossfader(0.5)).not.toThrow();
+    expect(engine.crossfader).toBeCloseTo(0.5, 5);
+    expect(engine.crossfaderGainL.calls).toHaveLength(0);
+    expect(engine.crossfaderGainR.calls).toHaveLength(0);
+  });
+});
+
+describe('DjEngine non-finite / out-of-range input hardening', () => {
+  // Regression: Math.max/min propagate NaN, so a single NaN/undefined
+  // (keyboard, MIDI, UI edge) used to poison the fader state and throw a
+  // TypeError inside setValueAtTime, unbinding the mixer sliders.
+
+  function wiredEngine() {
+    const engine = new DjEngine();
+    const mk = () => ({ calls: [], gain: { setValueAtTime: (v, t) => {} }, connect() {} });
+    engine.crossfaderGainL = mk();
+    engine.crossfaderGainR = mk();
+    engine.masterGain = { gain: { setValueAtTime: () => {} } };
+    engine.audioContext = { currentTime: 0 };
+    return engine;
+  }
+
+  it('should reject NaN/undefined/Infinity in setCrossfader() and keep prior state', () => {
+    const engine = wiredEngine();
+    engine.setCrossfader(0.4);
+    expect(engine.crossfader).toBeCloseTo(0.4, 5);
+    [NaN, undefined, Infinity, -Infinity].forEach((bad) => {
+      expect(() => engine.setCrossfader(bad)).not.toThrow();
+      expect(engine.crossfader).toBeCloseTo(0.4, 5);
+    });
+  });
+
+  it('should reject NaN/undefined/Infinity in setMasterVolume() and keep prior state', () => {
+    const engine = wiredEngine();
+    engine.setMasterVolume(0.6);
+    expect(engine.masterVolume).toBeCloseTo(0.6, 5);
+    [NaN, undefined, Infinity, -Infinity].forEach((bad) => {
+      expect(() => engine.setMasterVolume(bad)).not.toThrow();
+      expect(engine.masterVolume).toBeCloseTo(0.6, 5);
+    });
+  });
+
+  it('should sanitize calculateCrossfaderGains(): non-finite input collapses to center', () => {
+    const center = Math.cos(Math.PI / 4); // ~0.7071
+    [NaN, undefined, Infinity, -Infinity].forEach((bad) => {
+      const { gainL, gainR } = DjEngine.calculateCrossfaderGains(bad);
+      expect(Number.isFinite(gainL)).toBe(true);
+      expect(Number.isFinite(gainR)).toBe(true);
+      expect(gainL).toBeCloseTo(center, 10);
+      expect(gainR).toBeCloseTo(center, 10);
+    });
+  });
+
+  it('should clamp out-of-range values in calculateCrossfaderGains() to finite [0,1] gains', () => {
+    const cases = [
+      [5.0, 1.0],     // > 1 behaves as full right
+      [-5.0, -1.0],   // < -1 behaves as full left
+    ];
+    cases.forEach(([input, clamped]) => {
+      const a = DjEngine.calculateCrossfaderGains(input);
+      const b = DjEngine.calculateCrossfaderGains(clamped);
+      expect(a.gainL).toBeCloseTo(b.gainL, 10);
+      expect(a.gainR).toBeCloseTo(b.gainR, 10);
+      [a.gainL, a.gainR].forEach((g) => {
+        expect(Number.isFinite(g)).toBe(true);
+        expect(g).toBeGreaterThanOrEqual(0);
+        expect(g).toBeLessThanOrEqual(1);
+      });
+    });
+  });
+
+  it('should keep keyboard nudge arithmetic finite even after a bad value arrives', () => {
+    // mirrors src/lib/keyboard.js: engine.crossfader +/- step
+    const engine = wiredEngine();
+    engine.setCrossfader(NaN); // rejected, state stays 0.0
+    engine.setCrossfader(engine.crossfader - 0.05);
+    expect(Number.isFinite(engine.crossfader)).toBe(true);
+    expect(engine.crossfader).toBeCloseTo(-0.05, 10);
+  });
 });
