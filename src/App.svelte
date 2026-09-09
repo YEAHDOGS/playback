@@ -205,8 +205,20 @@
 
     const data = e.dataTransfer.getData('text/plain');
     if (data) {
-      // Dragged from TrackList table
-      const track = JSON.parse(data);
+      // Dragged from TrackList table — or from ANY other page/app, since
+      // text/plain drop payloads are not origin-restricted. Parse defensively
+      // and require a track-shaped object before handing it to a deck.
+      let track = null;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            && (typeof parsed.id === 'string' || typeof parsed.id === 'number')) {
+          track = parsed;
+        }
+      } catch {
+        track = null; // malformed JSON — ignore the drop
+      }
+      if (!track) return;
       if (deckId === 'deck1') {
         engine.deck1.loadTrack(track);
       } else {
