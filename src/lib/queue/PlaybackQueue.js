@@ -38,6 +38,28 @@ function defaultStorage() {
   return createMemoryStorage();
 }
 
+/**
+ * URL schemes that can usefully and safely persist across reloads.
+ * blob: object URLs are revoked on reload, so storing them is dead weight.
+ * Non-web schemes (javascript:, file:, data:text/..., etc.) are inert for
+ * media elements but can throw in the waveform decode fetch, so they're
+ * dropped at snapshot time. Relative URLs are fine — they resolve against
+ * the page origin.
+ */
+const PERSISTABLE_URL_SCHEMES = new Set(['http:', 'https:', 'data:']);
+
+/** True when a track URL is worth persisting into the queue snapshot. */
+export function isPersistableUrl(url) {
+  if (typeof url !== 'string' || url.length === 0) return false;
+  let scheme;
+  try {
+    scheme = new URL(url).protocol;
+  } catch {
+    return true; // relative URL — resolves against the page origin
+  }
+  return PERSISTABLE_URL_SCHEMES.has(scheme);
+}
+
 /** Strip a full track object down to what can survive JSON + reload. */
 export function snapshotTrack(track) {
   if (!track || track.id == null) return null;
@@ -46,8 +68,9 @@ export function snapshotTrack(track) {
     title: track.title ?? 'Untitled',
     artist: track.artist ?? 'Unknown',
   };
-  // Streamable demo tracks keep their URL; local File/Blob refs can't be serialized.
-  if (typeof track.url === 'string' && track.url) snap.url = track.url;
+  // Streamable demo tracks keep their URL; local File/Blob refs can't be serialized,
+  // and non-media URL schemes never survive a reload or load audio anyway.
+  if (isPersistableUrl(track.url)) snap.url = track.url;
   if (track.bpm != null) snap.bpm = Number(track.bpm);
   return snap;
 }
