@@ -87,21 +87,33 @@ export default class DjEngine {
   }
 
   /**
-   * Equal-power crossfader gain curve calculations.
-   * Constant power sum prevents volume drops in the center position.
+   * Pure equal-power crossfader gain calculation, kept static so it is
+   * unit-testable without a Web Audio context.
+   * Constant power sum (gainL^2 + gainR^2 = 1) prevents volume drops in
+   * the center position.
+   * @param {number} crossfader - -1.0 (full left) to +1.0 (full right)
+   * @returns {{ gainL: number, gainR: number }}
    */
-  updateCrossfaderGains() {
-    if (!this.crossfaderGainL || !this.crossfaderGainR) return;
-
+  static calculateCrossfaderGains(crossfader) {
     // Map -1..1 to 0..1 range
-    const norm = (this.crossfader + 1.0) / 2.0;
+    const norm = (crossfader + 1.0) / 2.0;
 
     // Equal-power crossfade curve
     // Left gain = cos(x * pi/2)
     // Right gain = sin(x * pi/2)
-    const gainL = Math.cos(norm * Math.PI / 2);
-    const gainR = Math.sin(norm * Math.PI / 2);
+    return {
+      gainL: Math.cos(norm * Math.PI / 2),
+      gainR: Math.sin(norm * Math.PI / 2),
+    };
+  }
 
+  /**
+   * Applies the equal-power crossfader gains to the audio graph.
+   */
+  updateCrossfaderGains() {
+    if (!this.crossfaderGainL || !this.crossfaderGainR) return;
+
+    const { gainL, gainR } = DjEngine.calculateCrossfaderGains(this.crossfader);
     this.crossfaderGainL.gain.setValueAtTime(gainL, this.audioContext.currentTime);
     this.crossfaderGainR.gain.setValueAtTime(gainR, this.audioContext.currentTime);
   }
