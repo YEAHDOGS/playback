@@ -2,6 +2,14 @@
  * AudioDeck class represents one of the two DJ decks.
  * Decouples audio playback, EQ, gain nodes, and analysers from presentation.
  */
+
+// Loudness-guard constants: per-track normalization attenuates hot masters
+// toward a reference level so switching demo tracks can't blast the listener.
+const TARGET_LOUDNESS_PEAK_AVG = 0.45; // reference average of decoded waveform peaks (0..1)
+const TARGET_LOUDNESS_DB = -14;        // reference integrated loudness when track metadata supplies dB
+const MIN_TRACK_GAIN = 0.25;           // max -12dB attenuation; never mutes the deck
+const MAX_TRACK_GAIN = 1.0;            // attenuate-only: boosting risks clipping into the EQ stack
+
 export default class AudioDeck {
   /**
    * @param {string} id - Deck ID ('deck1' or 'deck2')
@@ -29,6 +37,7 @@ export default class AudioDeck {
     this.cuePoint = 0; // Cue position in seconds
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
+    this.trackGain = 1.0; // loudness-guard attenuation multiplier (0.25..1); applied under deck volume
 
     // HTML5 Audio Element
     this.audio = new Audio();
@@ -141,6 +150,13 @@ export default class AudioDeck {
     this.cuePoint = 0;
     this.waveformPeaks = [];
 
+    // Loudness guard: seed per-track attenuation from metadata loudness when
+    // the track carries it, otherwise start flat (1.0) until real decoded
+    // peaks refine it in decodeWaveform. Reset every load so a hot master
+    // can't leak its attenuation onto the next (quiet) track, or vice versa.
+    this.trackGain = AudioDeck.calculateTrackGainFromDb(track.loudnessDb);
+    this.applyGain();
+
     // Load track source
     if (track.file) {
       // Local File object
@@ -193,7 +209,13 @@ export default class AudioDeck {
 
         this.waveformPeaks = peaks;
         this.isDecoding = false;
-        this.notifyChange();
+        // Real audio data is in hand: refine the loudness guard. Only when
+        // the track carried no metadata loudness — metadata takes precedence.
+        if (!Number.isFinite(track.loudnessDb)) {
+          this.applyLoudnessFromPeaks(peaks);
+        } else {
+          this.notifyChange();
+        }
       }, (e) => {
         console.warn("Waveform decoding failed, using synthetic peaks", e);
         this.generateSyntheticPeaks();
@@ -288,7 +310,69 @@ export default class AudioDeck {
 
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, vol));
-    this.gainNode.gain.value = this.volume;
+    this.applyGain();
+    this.notifyChange();
+  }
+
+  /**
+   * Writes the effective deck gain into the audio graph: the user's volume
+   * slider multiplied by the loudness-guard trackGain, so quiet tracks are
+   * untouched (x1.0) and hot masters are pulled down toward the reference
+   * level. Guard-claused so decks without a built graph (tests, pre-init)
+   * never throw.
+   */
+  applyGain() {
+    if (!this.gainNode) return;
+    this.gainNode.gain.value = this.volume * this.trackGain;
+  }
+
+  /**
+   * Pure per-track loudness estimate from decoded waveform peaks (0..1).
+   * Only attenuates: tracks at or below the reference loudness return 1.0,
+   * louder tracks are scaled down by reference/loudness, clamped to
+   * [MIN_TRACK_GAIN, 1]. Garbage input (empty, non-finite) always yields a
+   * safe 1.0 instead of poisoning the gain node.
+   * @param {number[]} peaks - downsampled 0..1 waveform peaks
+   * @returns {number} attenuation multiplier, always finite, in [0.25, 1]
+   */
+  static calculateTrackGain(peaks) {
+    if (!Array.isArray(peaks) || peaks.length === 0) return 1.0;
+    let sum = 0;
+    let count = 0;
+    for (const p of peaks) {
+      if (!Number.isFinite(p)) continue;
+      sum += Math.min(1, Math.max(0, p));
+      count++;
+    }
+    if (count === 0) return 1.0;
+    const loudness = sum / count;
+    // epsilon so a track exactly at the reference lands on 1.0, not 0.9999…
+    if (loudness <= TARGET_LOUDNESS_PEAK_AVG * (1 + 1e-9)) return 1.0;
+    const gain = TARGET_LOUDNESS_PEAK_AVG / loudness;
+    return Math.max(MIN_TRACK_GAIN, Math.min(MAX_TRACK_GAIN, gain));
+  }
+
+  /**
+   * Pure per-track loudness gain from explicit metadata (e.g. integrated
+   * LUFS carried on the track record). Tracks hotter than the reference
+   * level are attenuated; tracks at or below it pass through at 1.0.
+   * @param {number} loudnessDb - integrated loudness in dB (LUFS-ish)
+   * @returns {number} attenuation multiplier, always finite, in [0.25, 1]
+   */
+  static calculateTrackGainFromDb(loudnessDb) {
+    if (!Number.isFinite(loudnessDb)) return 1.0;
+    const gain = Math.pow(10, (TARGET_LOUDNESS_DB - loudnessDb) / 20);
+    return Math.max(MIN_TRACK_GAIN, Math.min(MAX_TRACK_GAIN, gain));
+  }
+
+  /**
+   * Refines the loudness guard from real decoded audio peaks. Synthetic
+   * fallback peaks never reach here — fake data must not drive real gain.
+   * @param {number[]} peaks - downsampled 0..1 waveform peaks from decodeWaveform
+   */
+  applyLoudnessFromPeaks(peaks) {
+    this.trackGain = AudioDeck.calculateTrackGain(peaks);
+    this.applyGain();
     this.notifyChange();
   }
 
@@ -355,7 +439,8 @@ export default class AudioDeck {
       eqHigh: this.eqHigh,
       cuePoint: this.cuePoint,
       isDecoding: this.isDecoding,
-      waveformPeaks: this.waveformPeaks
+      waveformPeaks: this.waveformPeaks,
+      trackGain: this.trackGain
     });
   }
 
