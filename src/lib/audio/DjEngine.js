@@ -8,6 +8,7 @@ export default class DjEngine {
     this.onChange = onChange || (() => {});
     this.initialized = false;
     this.masterVolume = 0.8;
+    this.prevMasterVolume = 0.8; // restored by toggleMute() after an unmute
     this.crossfader = 0.0; // -1.0 (Left deck only) to +1.0 (Right deck only)
 
     // State placeholders for decks
@@ -74,6 +75,18 @@ export default class DjEngine {
       this.masterGain.gain.setValueAtTime(this.masterVolume, this.audioContext.currentTime);
     }
     this.notifyEngineChange();
+  }
+
+  /**
+   * Toggles master mute. Unmuting restores the volume the user had before.
+   */
+  toggleMute() {
+    if (this.masterVolume > 0) {
+      this.prevMasterVolume = this.masterVolume;
+      this.setMasterVolume(0);
+    } else {
+      this.setMasterVolume(this.prevMasterVolume > 0 ? this.prevMasterVolume : 0.8);
+    }
   }
 
   /**

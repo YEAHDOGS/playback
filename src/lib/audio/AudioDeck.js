@@ -330,6 +330,19 @@ export default class AudioDeck {
   }
 
   /**
+   * Moves the playback position by a relative amount, clamped to the
+   * track bounds [0, duration] so seeks can never land out of range.
+   * @param {number} seconds - Positive or negative offset in seconds
+   */
+  seekBy(seconds) {
+    if (!this.duration) return;
+    const next = this.audio.currentTime + seconds;
+    this.audio.currentTime = Math.max(0, Math.min(this.duration, next));
+    this.currentTime = this.audio.currentTime;
+    this.notifyChange();
+  }
+
+  /**
    * Reads current decibel level for LED rendering.
    * Returns a value between 0 (silent) and 1 (max signal)
    */
