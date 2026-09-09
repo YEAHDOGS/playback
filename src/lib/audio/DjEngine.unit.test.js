@@ -145,8 +145,9 @@ describe('DjEngine lifecycle', () => {
     expect(() => engine.destroy()).not.toThrow(); // never initialized
 
     engine.init();
+    const context = engine.audioContext;
     expect(() => engine.destroy()).not.toThrow();
-    expect(engine.audioContext.closeCalled).toBe(true);
+    expect(context.closeCalled).toBe(true);
 
     // Second destroy stays safe too
     expect(() => engine.destroy()).not.toThrow();
@@ -249,5 +250,69 @@ describe('DjEngine syncDecks()', () => {
     engine.syncDecks('deck3');
     expect(syncToSpy1).not.toHaveBeenCalled();
     expect(syncToSpy2).not.toHaveBeenCalled();
+  });
+});
+
+describe('DjEngine destroy() lifecycle seal', () => {
+  it('resets to a clean uninitialized state after destroy()', () => {
+    const engine = new DjEngine();
+    engine.init();
+    engine.destroy();
+
+    expect(engine.initialized).toBe(false);
+    expect(engine.destroyed).toBe(true);
+    expect(engine.deck1).toBeNull();
+    expect(engine.deck2).toBeNull();
+    expect(engine.deck1State).toBeNull();
+    expect(engine.deck2State).toBeNull();
+    expect(engine.audioContext).toBeNull();
+    expect(engine.masterGain).toBeNull();
+    expect(engine.crossfaderGainL).toBeNull();
+    expect(engine.crossfaderGainR).toBeNull();
+  });
+
+  it('refuses init() after destroy() of an initialized engine (sealed)', () => {
+    const engine = new DjEngine();
+    engine.init();
+    engine.destroy();
+
+    engine.init();
+    expect(engine.initialized).toBe(false);
+    expect(engine.audioContext).toBeNull();
+    expect(engine.deck1).toBeNull();
+  });
+
+  it('does NOT seal an engine that was never initialized', () => {
+    const engine = new DjEngine();
+    engine.destroy(); // defensive teardown, no resources held
+
+    expect(engine.destroyed).toBe(false);
+    engine.init(); // still usable
+    expect(engine.initialized).toBe(true);
+    expect(engine.audioContext).not.toBeNull();
+  });
+
+  it('stays silent after destroy(): late notifyEngineChange publishes nothing', () => {
+    const onChange = vi.fn();
+    const engine = new DjEngine(onChange);
+    engine.init();
+    engine.destroy();
+
+    onChange.mockClear();
+    engine.notifyEngineChange();
+    engine.setMasterVolume(0.3); // updates local state only, no listeners
+    engine.setCrossfader(0.5);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(engine.masterVolume).toBe(0.3);
+    expect(engine.crossfader).toBe(0.5);
+  });
+
+  it('destroy() twice stays safe and does not resurrect', () => {
+    const engine = new DjEngine();
+    engine.init();
+    engine.destroy();
+    expect(() => engine.destroy()).not.toThrow();
+    expect(engine.initialized).toBe(false);
+    expect(engine.destroyed).toBe(true);
   });
 });
