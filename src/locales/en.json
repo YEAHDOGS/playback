@@ -36,7 +36,10 @@
     "title": "MIDI Controller Status",
     "connected": "Connected",
     "disconnected": "Disconnected",
-    "no_device": "No MIDI device connected. Playing via web audio."
+    "no_device": "No MIDI device connected. Playing via web audio.",
+    "connect": "Connect MIDI Controller",
+    "connecting": "Requesting MIDI access...",
+    "unsupported": "Web MIDI not supported in this browser (needs HTTPS/localhost)"
   },
   "deck": {
     "empty": "No Track Loaded",

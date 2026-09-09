@@ -36,7 +36,10 @@
     "title": "Estado del Controlador MIDI",
     "connected": "Conectado",
     "disconnected": "Desconectado",
-    "no_device": "Sin controlador MIDI conectado. Usando audio web."
+    "no_device": "Sin controlador MIDI conectado. Usando audio web.",
+    "connect": "Conectar Controlador MIDI",
+    "connecting": "Solicitando acceso MIDI...",
+    "unsupported": "Web MIDI no soportado en este navegador (requiere HTTPS/localhost)"
   },
   "deck": {
     "empty": "Sin Pista Cargada",
