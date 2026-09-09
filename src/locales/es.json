@@ -23,6 +23,7 @@
   "library": {
     "search": "Buscar título de pista o artista...",
     "drag_drop": "Arrastre y suelte archivos locales (MP3/WAV) aquí, o doble clic para cargar",
+    "dblclick_load": "Doble clic para cargar en este deck",
     "header": "Biblioteca de Pistas",
     "title": "Título",
     "artist": "Artista",

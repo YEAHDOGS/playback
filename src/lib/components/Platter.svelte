@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n.js';
-  import { Play, Pause, RotateCcw, Music } from 'lucide-svelte';
+  import { Play, Pause, Music } from 'lucide-svelte';
 
   // Svelte 5 props
   let {
