@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { describe, it, expect, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/svelte';
 import { compile } from 'svelte/compiler';
 import source from './QueuePanel.svelte?raw';
 import QueuePanel from './QueuePanel.svelte';
@@ -85,5 +85,86 @@ describe('QueuePanel a11y', () => {
       { props: { queue: fakeQueue(), droppedCount: 0 } }
     );
     expect(container.querySelector('[role="status"]')).toBeNull();
+  });
+});
+
+describe('QueuePanel keyboard navigation', () => {
+  const rowsOf = (container) => [...container.querySelectorAll('ol > li')];
+
+  it('keeps exactly one row in the tab order (roving tabindex)', () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const tabbables = rowsOf(container).filter(
+      (r) => r.getAttribute('tabindex') === '0'
+    );
+    expect(tabbables.length).toBe(1);
+    expect(tabbables[0]).toBe(rowsOf(container)[0]);
+  });
+
+  it('ArrowDown moves focus to the next row and moves the tab stop with it', async () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const rows = rowsOf(container);
+    rows[0].focus();
+    await fireEvent.keyDown(rows[0], { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(rows[1]);
+    expect(rows[1].getAttribute('tabindex')).toBe('0');
+    expect(rows[0].getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('ArrowUp / Home / End navigate, and arrows clamp at the ends', async () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const rows = rowsOf(container);
+    await fireEvent.keyDown(rows[0], { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(rows[0]); // clamped at top
+    await fireEvent.keyDown(rows[0], { key: 'End' });
+    expect(document.activeElement).toBe(rows[2]);
+    await fireEvent.keyDown(rows[2], { key: 'Home' });
+    expect(document.activeElement).toBe(rows[0]);
+  });
+
+  it('arrows work when focus is on a button inside a row', async () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const rows = rowsOf(container);
+    const removeBtn = rows[0].querySelector('button[aria-label="Remove from queue"]');
+    removeBtn.focus();
+    await fireEvent.keyDown(removeBtn, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(rows[1]);
+  });
+
+  it('Enter on a focused row plays that entry', async () => {
+    const onPlayAt = vi.fn();
+    const { container } = render(
+      QueuePanel,
+      { props: { queue: fakeQueue(), onPlayAt } }
+    );
+    const rows = rowsOf(container);
+    await fireEvent.keyDown(rows[0], { key: 'Enter' });
+    expect(onPlayAt).toHaveBeenCalledTimes(1);
+    expect(onPlayAt).toHaveBeenCalledWith(0);
+  });
+
+  it('Enter on the current row is a no-op (mirrors the hidden play button)', async () => {
+    const onPlayAt = vi.fn();
+    const { container } = render(
+      QueuePanel,
+      { props: { queue: fakeQueue(), onPlayAt } }
+    );
+    const rows = rowsOf(container); // index 1 is current in fakeQueue
+    await fireEvent.keyDown(rows[1], { key: 'Enter' });
+    expect(onPlayAt).not.toHaveBeenCalled();
+  });
+
+  it('swallows handled keys so global transport shortcuts stay quiet in the queue', async () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const rows = rowsOf(container);
+    const windowSpy = vi.fn();
+    window.addEventListener('keydown', windowSpy);
+    try {
+      await fireEvent.keyDown(rows[0], { key: 'ArrowDown' });
+      await fireEvent.keyDown(rows[2], { key: 'Enter' }); // non-current row: swallowed
+      await fireEvent.keyDown(rows[1], { key: 'x' }); // unhandled: must pass through
+    } finally {
+      window.removeEventListener('keydown', windowSpy);
+    }
+    expect(windowSpy).toHaveBeenCalledTimes(1); // only the 'x'
   });
 });

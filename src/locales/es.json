@@ -60,7 +60,8 @@
     "dropped": "{count} pista(s) guardada(s) fueron eliminadas — ya no están en la biblioteca.",
     "move_up": "Subir",
     "move_down": "Bajar",
-    "play_next": "Poner siguiente en la cola"
+    "play_next": "Poner siguiente en la cola",
+    "keyboard_hint": "Teclado: las flechas arriba y abajo se mueven entre pistas, Inicio y Fin saltan a los extremos, Enter reproduce la pista enfocada."
   },
   "settings": {
     "header": "Ajustes",

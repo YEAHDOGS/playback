@@ -1,9 +1,18 @@
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
 <script>
   import { t } from '../i18n.js';
   import { ListMusic, Play, X, Trash2, SkipBack, SkipForward, ChevronUp, ChevronDown } from 'lucide-svelte';
 
   // Renders the persistent session queue (PlaybackQueue instance). Pure
   // presentation — every button fans out to callbacks owned by App.svelte.
+  //
+  // Keyboard navigation: rows carry a roving tabindex. ArrowUp/ArrowDown move
+  // DOM focus between rows (works from the row itself or any button inside
+  // it), Home/End jump to the ends, and Enter/Space on a focused row plays
+  // that entry. The handled keys are swallowed (preventDefault +
+  // stopPropagation) so the global transport shortcuts in keyboard.js
+  // (Space = deck 1 toggle, arrows = volume/crossfader) stay quiet while the
+  // queue has focus.
   let {
     queue = null,
     droppedCount = 0,
@@ -18,6 +27,60 @@
 
   const items = $derived(queue ? queue.items : []);
   const currentIndex = $derived(queue ? queue.index : -1);
+
+  /** Roving tab stop — exactly one row is in the tab order at a time. */
+  let focusRow = $state(0);
+  /** Ref to the <ol> for programmatic row focus. */
+  let listEl = $state(null);
+
+  const clampRow = (i) => Math.max(0, Math.min(items.length - 1, i));
+
+  function focusRowEl(i) {
+    listEl?.querySelector(`li[data-row="${i}"]`)?.focus();
+  }
+
+  /** @param {KeyboardEvent} e */
+  function onListKeyDown(e) {
+    if (items.length === 0) return;
+    const target = e.target;
+    const li = target instanceof Element ? target.closest('li[data-row]') : null;
+    if (!li) return;
+    const i = Number(li.dataset.row);
+
+    let next = -1;
+    switch (e.key) {
+      case 'ArrowDown':
+        next = clampRow(i + 1);
+        break;
+      case 'ArrowUp':
+        next = clampRow(i - 1);
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = items.length - 1;
+        break;
+      case 'Enter':
+      case ' ':
+        // Row itself focused (not an inner button) — play that entry.
+        // The play button is hidden on the current row, so Enter there
+        // stays a no-op rather than restarting the track.
+        if (target === li && i !== currentIndex) {
+          e.preventDefault();
+          e.stopPropagation();
+          focusRow = i;
+          onPlayAt(i);
+        }
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    focusRow = next;
+    focusRowEl(next);
+  }
 </script>
 
 <div class="panel-border bg-[var(--bg-card)] rounded-xl p-3 flex flex-col gap-2 shadow-md select-none w-full">
@@ -72,10 +135,18 @@
       {$t('queue.empty')}
     </p>
   {:else}
-    <ol aria-label={$t('queue.list')} class="flex flex-col gap-1 max-h-40 overflow-y-auto">
+    <p class="sr-only">{$t('queue.keyboard_hint')}</p>
+    <ol
+      aria-label={$t('queue.list')}
+      class="flex flex-col gap-1 max-h-40 overflow-y-auto"
+      bind:this={listEl}
+      onkeydown={onListKeyDown}
+    >
       {#each items as item, i (item.id)}
         <li
-          class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[11px] transition-colors {i === currentIndex ? 'border-[var(--color-neon-red)] bg-[var(--color-neon-red-dim)]' : 'border-transparent hover:bg-[var(--bg-panel)]/40'}"
+          data-row={i}
+          tabindex={i === clampRow(focusRow) ? 0 : -1}
+          class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[11px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-neon-red)] focus-visible:outline-offset-1 {i === currentIndex ? 'border-[var(--color-neon-red)] bg-[var(--color-neon-red-dim)]' : 'border-transparent hover:bg-[var(--bg-panel)]/40'}"
           aria-current={i === currentIndex ? true : undefined}
         >
           <span class="font-mono text-[9px] text-[var(--color-text-muted)] w-5 text-center shrink-0">

@@ -60,7 +60,8 @@
     "dropped": "{count} saved track(s) were removed — they are no longer in the library.",
     "move_up": "Move up",
     "move_down": "Move down",
-    "play_next": "Play next in queue"
+    "play_next": "Play next in queue",
+    "keyboard_hint": "Keyboard: Up and Down arrows move between tracks, Home and End jump to the ends, Enter plays the focused track."
   },
   "settings": {
     "header": "Settings",
