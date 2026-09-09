@@ -62,4 +62,28 @@ describe('QueuePanel a11y', () => {
     expect(byLabel(rows[2], 'Move down').disabled).toBe(true);
     expect(byLabel(rows[2], 'Move up').disabled).toBe(false);
   });
+
+  it('labels the track list for screen readers', () => {
+    const { container } = render(QueuePanel, { props: { queue: fakeQueue() } });
+    const list = container.querySelector('ol');
+    expect(list.getAttribute('aria-label')).toBe('Session queue');
+  });
+
+  it('announces the dropped-tracks notice via a live region', () => {
+    const { container } = render(
+      QueuePanel,
+      { props: { queue: fakeQueue(), droppedCount: 2 } }
+    );
+    const notice = container.querySelector('[role="status"]');
+    expect(notice).not.toBeNull();
+    expect(notice.textContent).toContain('2');
+  });
+
+  it('shows no dropped-tracks notice when nothing was dropped', () => {
+    const { container } = render(
+      QueuePanel,
+      { props: { queue: fakeQueue(), droppedCount: 0 } }
+    );
+    expect(container.querySelector('[role="status"]')).toBeNull();
+  });
 });

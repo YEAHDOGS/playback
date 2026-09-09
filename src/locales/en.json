@@ -49,6 +49,7 @@
   },
   "queue": {
     "header": "Up Next",
+    "list": "Session queue",
     "empty": "Queue is empty — hover a library track and hit +Q to add it. Your queue survives reloads.",
     "play": "Play now",
     "remove": "Remove from queue",
