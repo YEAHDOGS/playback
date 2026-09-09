@@ -26,5 +26,8 @@
   "dependencies": {
     "lucide-svelte": "^1.0.1",
     "svelte-i18n": "^4.0.1"
+  },
+  "overrides": {
+    "browserslist": "4.28.7"
   }
 }
