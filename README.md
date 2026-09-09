@@ -9,7 +9,7 @@ A web-based, customizable DJ interface — two decks, a mixer, and a track libra
 - **Two decks** — drag & drop (or double-click) tracks onto a deck, scratch the jog wheel (mouse + touch), pitch fader (±8%), hot cues, sync, elapsed/remaining time display
 - **Mixer** — 3-band EQ per channel, channel volumes, LED level meters, equal-power crossfader, master volume
 - **Waveforms** — decoded offline via `decodeAudioData` (300 peaks/track) with click-to-seek; falls back to a synthetic waveform when CORS or decoding fails
-- **Track library** — ships with demo tracks, search, local file upload (MP3/WAV via drag & drop or file picker)
+- **Track library** — loads with three sample MP3s streamed from soundhelix.com (needs internet), plus search, local file upload (MP3/WAV via drag & drop or file picker)
 - **Themes** — Night (neon red/black) and Daytime (icy white), persisted per session
 - **i18n** — English + Spanish via `svelte-i18n`; strings live in `src/locales/`
 - **MIDI controllers** — connect hardware via Web MIDI in Settings; see [MIDI](#midi-controllers) below
@@ -24,6 +24,12 @@ npm test         # vitest suite (crossfader math)
 ```
 
 `npm run dev` is the way Brandon runs it day-to-day; per repo convention the production build isn't the verification path.
+
+### First 60 seconds
+
+1. Open the dev-server URL, then click **Start DJing** — browsers only unlock the Web Audio context on a user gesture, so nothing makes sound until you do.
+2. Double-click a library track (they stream from SoundHelix sample MP3s, so this part needs internet) or drag in your own MP3/WAV to load a deck, then hit play.
+3. Drag the **crossfader** at the bottom of the mixer — you should hear audio move L/R with no volume dip in the center (equal-power curve). Arrow keys nudge it ±0.05.
 
 ## Architecture
 
