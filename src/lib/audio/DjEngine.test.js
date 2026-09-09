@@ -193,3 +193,75 @@ describe('DjEngine non-finite / out-of-range input hardening', () => {
     expect(engine.crossfader).toBeCloseTo(-0.05, 10);
   });
 });
+
+// --- onTrackEnd hook plumbing ---------------------------------------------------
+
+describe('DjEngine onTrackEnd hook plumbing (mocked browser)', () => {
+  // init() needs window.AudioContext + global Audio; both are stubbed here
+  // and removed afterwards so the rest of the suite stays pure node.
+  function mockAudioContext() {
+    const gain = () => ({ gain: { value: 0, setValueAtTime() {} }, connect() {}, disconnect() {} });
+    const biquad = () => ({ type: '', frequency: { value: 0 }, Q: { value: 0 }, gain: { value: 0 }, connect() {}, disconnect() {} });
+    return {
+      state: 'running',
+      currentTime: 0,
+      createMediaElementSource: () => ({ connect() {}, disconnect() {} }),
+      createBiquadFilter: biquad,
+      createGain: gain,
+      createAnalyser: () => ({ fftSize: 32, frequencyBinCount: 8, connect() {}, disconnect() {}, getByteFrequencyData(arr) { arr.fill(0); } }),
+      resume: () => Promise.resolve(),
+      close() {},
+      destination: {},
+    };
+  }
+
+  class MockAudioElement {
+    constructor() { this.listeners = {}; this.src = ''; this.currentTime = 0; this.duration = 0; }
+    addEventListener(t, cb) { (this.listeners[t] ||= []).push(cb); }
+    removeEventListener() {}
+    emit(t) { (this.listeners[t] || []).forEach((cb) => cb()); }
+    load() {}
+    pause() {}
+    play() { return Promise.resolve(); }
+  }
+
+  let prevWindow;
+  let prevAudio;
+  function stubBrowser() {
+    prevWindow = globalThis.window;
+    prevAudio = globalThis.Audio;
+    globalThis.window = { AudioContext: function AudioContext() { return mockAudioContext(); } };
+    globalThis.Audio = MockAudioElement;
+  }
+  function unstubBrowser() {
+    if (prevWindow === undefined) delete globalThis.window; else globalThis.window = prevWindow;
+    if (prevAudio === undefined) delete globalThis.Audio; else globalThis.Audio = prevAudio;
+  }
+
+  it('should forward each deck\u2019s ended event to hooks.onTrackEnd with the right deck id', () => {
+    stubBrowser();
+    try {
+      const seen = [];
+      const engine = new DjEngine(() => {}, { onTrackEnd: (id) => seen.push(id) });
+      engine.init();
+      engine.deck1.audio.emit('ended');
+      engine.deck2.audio.emit('ended');
+      expect(seen).toEqual(['deck1', 'deck2']);
+      engine.destroy();
+    } finally {
+      unstubBrowser();
+    }
+  });
+
+  it('should init fine with no hooks (backward compatible)', () => {
+    stubBrowser();
+    try {
+      const engine = new DjEngine();
+      expect(() => engine.init()).not.toThrow();
+      expect(() => engine.deck1.audio.emit('ended')).not.toThrow();
+      engine.destroy();
+    } finally {
+      unstubBrowser();
+    }
+  });
+});

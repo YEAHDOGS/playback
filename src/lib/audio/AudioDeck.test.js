@@ -16,6 +16,7 @@ class MockAudioElement {
   }
   addEventListener(type, cb) { (this.listeners[type] ||= []).push(cb); }
   removeEventListener() {}
+  emit(type) { (this.listeners[type] || []).forEach((cb) => cb()); }
   load() {}
   pause() {}
   play() { return Promise.resolve(); }
@@ -42,8 +43,8 @@ function mockAudioContext() {
   };
 }
 
-function makeDeck() {
-  return new AudioDeck('deck1', mockAudioContext(), () => {});
+function makeDeck(hooks) {
+  return new AudioDeck('deck1', mockAudioContext(), () => {}, hooks);
 }
 
 const avg = (n, v) => Array.from({ length: n }, () => v);
@@ -156,5 +157,71 @@ describe('AudioDeck loudness-guard gain application (mocked graph)', () => {
     await deck.loadTrack({ url: 'https://example.com/quiet.mp3' });
     expect(deck.trackGain).toBe(1.0);
     expect(deck.gainNode.gain.value).toBeCloseTo(deck.volume, 10);
+  });
+});
+
+// --- Resume seek: loadTrack(track, { startAt }) --------------------------------
+
+describe('AudioDeck resume seek (loadTrack startAt)', () => {
+  it('should apply startAt on loadedmetadata once the duration is known', async () => {
+    const deck = makeDeck();
+    await deck.loadTrack({ url: 'https://example.com/x.mp3' }, { startAt: 30 });
+    expect(deck.audio.currentTime).toBe(0); // not applied before metadata
+    deck.audio.duration = 100;
+    deck.audio.emit('loadedmetadata');
+    expect(deck.audio.currentTime).toBe(30);
+    expect(deck.pendingSeek).toBe(0); // consumed exactly once
+  });
+
+  it('should clamp a stale startAt inside the track duration (never skip on resume)', async () => {
+    const deck = makeDeck();
+    await deck.loadTrack({ url: 'https://example.com/x.mp3' }, { startAt: 200 });
+    deck.audio.duration = 100;
+    deck.audio.emit('loadedmetadata');
+    // parks just before the end instead of past it (past-end would fire
+    // 'ended' immediately and auto-advance would skip the resumed track)
+    expect(deck.audio.currentTime).toBeLessThan(100);
+    expect(deck.audio.currentTime).toBeCloseTo(99.75, 5);
+  });
+
+  it('should collapse garbage startAt (NaN/negative/Infinity) to 0', async () => {
+    for (const bad of [NaN, -5, Infinity, undefined, '30']) {
+      const deck = makeDeck();
+      await deck.loadTrack({ url: 'https://example.com/x.mp3' }, { startAt: bad });
+      deck.audio.duration = 100;
+      deck.audio.emit('loadedmetadata');
+      expect(deck.audio.currentTime).toBe(0);
+    }
+  });
+
+  it('should stay at 0 when no startAt is given', async () => {
+    const deck = makeDeck();
+    await deck.loadTrack({ url: 'https://example.com/x.mp3' });
+    deck.audio.duration = 100;
+    deck.audio.emit('loadedmetadata');
+    expect(deck.audio.currentTime).toBe(0);
+  });
+});
+
+// --- onTrackEnd hook ------------------------------------------------------------
+
+describe('AudioDeck onTrackEnd hook', () => {
+  it('should fire onTrackEnd with the deck id when the track plays to completion', () => {
+    const seen = [];
+    const deck = makeDeck({ onTrackEnd: (id) => seen.push(id) });
+    deck.audio.emit('ended');
+    expect(seen).toEqual(['deck1']);
+  });
+
+  it('should be a silent no-op when no hook is wired', () => {
+    const deck = makeDeck();
+    expect(() => deck.audio.emit('ended')).not.toThrow();
+    expect(deck.playing).toBe(false);
+  });
+
+  it('should survive a throwing hook without breaking deck state', () => {
+    const deck = makeDeck({ onTrackEnd: () => { throw new Error('boom'); } });
+    expect(() => deck.audio.emit('ended')).not.toThrow();
+    expect(deck.playing).toBe(false);
   });
 });

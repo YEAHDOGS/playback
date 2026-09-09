@@ -4,10 +4,13 @@
   import DjEngine from './lib/audio/DjEngine.js';
   import MidiBridge from './lib/audio/MidiBridge.js';
   import { attachKeyboardShortcuts } from './lib/keyboard.js';
+  import { PlaybackQueue } from './lib/queue/PlaybackQueue.js';
+  import { DEMO_TRACKS } from './lib/catalog.js';
   import Platter from './lib/components/Platter.svelte';
   import Mixer from './lib/components/Mixer.svelte';
   import Waveform from './lib/components/Waveform.svelte';
   import TrackList from './lib/components/TrackList.svelte';
+  import QueuePanel from './lib/components/QueuePanel.svelte';
   import { Settings, X, Globe, Moon, Sun, Play, Music } from 'lucide-svelte';
 
   let engine = $state(null);
@@ -30,11 +33,33 @@
   // Mobile tab state: 'deck1' | 'mixer' | 'deck2' | 'library'
   let mobileTab = $state('deck1');
 
+  // Persistent session queue: survives reloads, restored against the
+  // catalog on boot. Local uploads are pruned (File refs can't persist);
+  // the prune count is surfaced once in the queue panel.
+  let queue = $state(null);
+  let queueDropped = $state(0);
+
+  // Local uploads reported up by each library column, keyed by source, so
+  // queue snapshots can be resolved back to full track objects (incl. the
+  // live File ref) while the session is alive.
+  let libraryExtras = $state({});
+  let liveCatalog = $derived([
+    ...DEMO_TRACKS,
+    ...Object.values(libraryExtras).flat()
+  ]);
+
   onMount(() => {
+    // Restore the saved queue before the audio engine exists — the queue is
+    // pure data + localStorage and never touches audio. Playback stays
+    // paused until a gesture (browsers block autoplay regardless).
+    queue = new PlaybackQueue();
+    const restored = queue.restore(DEMO_TRACKS);
+    queueDropped = restored.dropped;
+
     // Instantiate the engine, state updates are bound to engineState
     engine = new DjEngine((state) => {
       engineState = state;
-    });
+    }, { onTrackEnd: handleDeckTrackEnd });
 
     // Keyboard transport shortcuts (Space, X, C/V, S, arrows)
     const detachKeys = attachKeyboardShortcuts(engine);
@@ -83,6 +108,95 @@
     const deck = deckId === 'deck2' ? engine.deck2 : engine.deck1;
     deck.loadTrack(track);
   }
+
+  // ── Session queue wiring ──────────────────────────────────────────────
+
+  function enqueueTrack(track) {
+    if (queue) queue.add(track);
+  }
+
+  function registerLibraryTracks(source, tracks) {
+    // Keep only session-live uploads (demo catalog ids are canonical in
+    // lib/catalog.js); snapshot resolution needs the live File refs.
+    libraryExtras[source] = (tracks || []).filter(
+      (t) => t && String(t.id).startsWith('local-')
+    );
+  }
+
+  // Resolve a persisted queue snapshot back to the fullest track object we
+  // have (demo catalog first, then live uploads). Falls back to the snapshot
+  // itself, which carries url/title/artist for streamable tracks.
+  function resolveQueueTrack(snap) {
+    if (!snap) return null;
+    return liveCatalog.find((t) => String(t.id) === String(snap.id)) || snap;
+  }
+
+  // Play queue entry i on deck 1. Replaying the restored current index
+  // resumes at the saved position; picking another entry starts at 0.
+  function playQueueAt(i) {
+    if (!queue || !engine || !engine.deck1) return;
+    const resumeAt = i === queue.index ? queue.position : 0;
+    if (!queue.setIndex(i)) return;
+    engine.deck1.loadTrack(resolveQueueTrack(queue.current()), { startAt: resumeAt });
+    engine.deck1.play();
+  }
+
+  function queueStep(dir) {
+    if (!queue || !engine || !engine.deck1) return;
+    const track = dir > 0 ? queue.next() : queue.prev();
+    if (!track) return;
+    engine.deck1.loadTrack(resolveQueueTrack(track));
+    engine.deck1.play();
+  }
+
+  function removeQueueAt(i) {
+    if (queue) queue.removeAt(i);
+  }
+
+  function clearQueue() {
+    if (queue) queue.clear();
+  }
+
+  // A deck's track played to completion: only auto-advance when the deck was
+  // playing FROM the queue (deck-loaded tracks loaded by hand are the DJ's
+  // business — the queue never hijacks a manually loaded deck).
+  function handleDeckTrackEnd(deckId) {
+    if (!queue || !engine) return;
+    const deck = deckId === 'deck2' ? engine.deck2 : engine.deck1;
+    const current = queue.current();
+    if (!deck || !current || !deck.loadedTrack) return;
+    if (String(deck.loadedTrack.id) !== current.id) return;
+    const nextTrack = queue.next();
+    if (!nextTrack) return;
+    deck.loadTrack(resolveQueueTrack(nextTrack));
+    deck.play();
+  }
+
+  // Persist the deck-1 playhead into the queue while it plays the queue's
+  // current track: throttled during playback, flushed on pause. This is
+  // what makes "reopens at the saved position" true across reloads.
+  let lastQueueSaveAt = 0;
+  let deck1WasPlaying = false;
+  $effect(() => {
+    const d1 = engineState.deck1;
+    const q = queue;
+    const playing = d1?.playing === true;
+    const matches =
+      !!q && !!d1?.loadedTrack && !!q.current() &&
+      String(d1.loadedTrack.id) === q.current().id;
+    if (matches) {
+      const now = Date.now();
+      if (playing && now - lastQueueSaveAt > 5000) {
+        lastQueueSaveAt = now;
+        q.setPosition(d1.currentTime || 0);
+      }
+      if (!playing && deck1WasPlaying) {
+        lastQueueSaveAt = now;
+        q.setPosition(d1.currentTime || 0);
+      }
+    }
+    deck1WasPlaying = playing;
+  });
 
   // Handle drops onto Deck containers
   function handleDrop(e, deckId) {
@@ -250,8 +364,23 @@
             <TrackList 
               defaultDeck="deck1"
               onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
+              onEnqueue={(track) => enqueueTrack(track)}
+              onTracksChange={(tracks) => registerLibraryTracks('deck1', tracks)}
             />
           </div>
+          {#if queue}
+            <div class="shrink-0">
+              <QueuePanel
+                {queue}
+                droppedCount={queueDropped}
+                onPlayAt={(i) => playQueueAt(i)}
+                onRemoveAt={(i) => removeQueueAt(i)}
+                onClear={clearQueue}
+                onPrev={() => queueStep(-1)}
+                onNext={() => queueStep(1)}
+              />
+            </div>
+          {/if}
         </div>
 
         <!-- Column 2: Central Mixer -->
@@ -298,6 +427,8 @@
             <TrackList 
               defaultDeck="deck2"
               onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
+              onEnqueue={(track) => enqueueTrack(track)}
+              onTracksChange={(tracks) => registerLibraryTracks('deck2', tracks)}
             />
           </div>
         </div>

@@ -43,6 +43,7 @@ src/
 │   │   ├── AudioDeck.js        # one deck: HTMLAudioElement -> EQ -> gain -> analyser
 │   │   ├── MidiBridge.js       # Web MIDI -> DjEngine bindings (default map + overrides)
 │   │   └── DjEngine.test.js    # equal-power crossfader math tests
+│   ├── catalog.js              # canonical demo track catalog (queue restore + libraries)
 │   ├── queue/
 │   │   ├── PlaybackQueue.js      # persistent queue: localStorage, reorder, stale pruning
 │   │   └── PlaybackQueue.test.js # queue persistence regression tests
@@ -50,7 +51,8 @@ src/
 │   │   ├── Platter.svelte      # jog wheel, pitch fader, transport, hot cues
 │   │   ├── Mixer.svelte        # EQs, channel faders, LED meters, crossfader
 │   │   ├── Waveform.svelte     # canvas waveform with scrubbing
-│   │   ├── TrackList.svelte    # library: search, upload, drag & drop
+│   │   ├── TrackList.svelte    # library: search, upload, drag & drop, enqueue
+│   │   ├── QueuePanel.svelte   # session queue: play-now, remove, prev/next, clear
 │   │   └── Knob.svelte         # rotary control (mouse + touch + double-click reset)
 │   ├── keyboard.js             # keyboard transport shortcuts
 │   └── i18n.js                 # svelte-i18n setup
@@ -102,8 +104,19 @@ The queue is the persistent bit of your session. It lives in `localStorage`
   poisoning state. Local uploads are stripped to serializable metadata on save
   (`File` blobs can't survive a reload).
 
-Wire-up note: `PlaybackQueue` is intentionally pure — `App.svelte` calls
-`restore(catalog)` on boot and feeds `current()` / `next()` into the decks.
+Wire-up (2026-09-09): `PlaybackQueue` is wired into `App.svelte`. On boot
+the queue restores against the canonical catalog (`src/lib/catalog.js`);
+pruned entries are reported once in the panel. Hovering a library track shows
+a **+Q** enqueue button (each `TrackList` also reports its live library —
+demo catalog + local uploads — upward so queue snapshots resolve back to
+full track objects with their `File` refs while the session is alive).
+`QueuePanel` (under deck 1's library) plays entries on deck 1, removes,
+reorders via prev/next, and clears. The playhead is persisted while deck 1
+plays the queue's current track (throttled + flushed on pause), and replaying
+the restored entry resumes at the saved position (`loadTrack`'s `startAt`,
+clamped inside the track duration so a stale position can't skip the track).
+When a deck plays a track **from the queue** to completion, the next entry
+auto-advances on that deck; manually loaded tracks never auto-advance.
 
 ## MIDI controllers
 

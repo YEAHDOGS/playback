@@ -47,6 +47,17 @@
     "remaining": "Restante",
     "scratch_mode": "Modo Scratch"
   },
+  "queue": {
+    "header": "A Continuación",
+    "empty": "La cola está vacía — pasa el cursor sobre una pista y pulsa +Q para añadirla. Tu cola sobrevive a recargas.",
+    "play": "Reproducir ahora",
+    "remove": "Quitar de la cola",
+    "clear": "Vaciar cola",
+    "prev": "Anterior en la cola",
+    "next": "Siguiente en la cola",
+    "enqueue": "Añadir a la cola",
+    "dropped": "{count} pista(s) guardada(s) fueron eliminadas — ya no están en la biblioteca."
+  },
   "settings": {
     "header": "Ajustes",
     "theme": "Modo de Tema",

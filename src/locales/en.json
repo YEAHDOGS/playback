@@ -47,6 +47,17 @@
     "remaining": "Remaining",
     "scratch_mode": "Scratch Mode"
   },
+  "queue": {
+    "header": "Up Next",
+    "empty": "Queue is empty — hover a library track and hit +Q to add it. Your queue survives reloads.",
+    "play": "Play now",
+    "remove": "Remove from queue",
+    "clear": "Clear queue",
+    "prev": "Previous in queue",
+    "next": "Next in queue",
+    "enqueue": "Add to queue",
+    "dropped": "{count} saved track(s) were removed — they are no longer in the library."
+  },
   "settings": {
     "header": "Settings",
     "theme": "Theme Mode",

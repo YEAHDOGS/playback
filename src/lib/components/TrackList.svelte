@@ -1,43 +1,28 @@
 <script>
   import { t } from '../i18n.js';
-  import { Search, Upload, Disc } from 'lucide-svelte';
+  import { DEMO_TRACKS } from '../catalog.js';
+  import { Search, Upload, Disc, Plus } from 'lucide-svelte';
 
   // Svelte 5 props
   let {
     onLoadTrack = () => {}, // callback: (deckId, track)
+    onEnqueue = () => {},   // callback: (track) — add to the session queue
+    onTracksChange = () => {}, // callback: (tracks) — full library incl. uploads
     defaultDeck = 'deck1'   // deck that double-click loads into (per-column)
   } = $props();
 
   let searchQuery = $state('');
   let isDragOver = $state(false);
 
-  // Default track database
-  let tracks = $state([
-    {
-      id: 'track-1',
-      title: 'Paradise Beat',
-      artist: 'Axel Rose',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      bpm: 120,
-      duration: '6:12'
-    },
-    {
-      id: 'track-2',
-      title: 'Leave The World',
-      artist: 'Swedish House',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-      bpm: 128,
-      duration: '7:05'
-    },
-    {
-      id: 'track-3',
-      title: 'Dogs Anthem',
-      artist: 'DOGS',
-      url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-      bpm: 124,
-      duration: '5:44'
-    }
-  ]);
+  // Default track database — the canonical demo catalog lives in lib/catalog.js
+  // so the queue, restore logic, and both library columns agree on track ids.
+  let tracks = $state([...DEMO_TRACKS]);
+
+  // Report the live library (demo catalog + local uploads) upward so the App
+  // can resolve queue snapshots back to full track objects (incl. File refs).
+  $effect(() => {
+    onTracksChange(tracks);
+  });
 
   // Filtered tracks list
   let filteredTracks = $derived.by(() => {
@@ -193,6 +178,13 @@
               <td class="py-2 px-3 text-right pr-4">
                 <!-- Mobile Friendly Load triggers -->
                 <div class="hidden group-hover:flex items-center justify-end gap-1.5">
+                  <button
+                    class="px-2 py-0.5 text-[9px] font-display font-semibold uppercase tracking-wider rounded border border-[var(--border-color)] hover:border-[#ff2a3b] hover:text-[#ff2a3b] bg-[var(--bg-input)] flex items-center gap-0.5"
+                    title={$t('queue.enqueue')}
+                    onclick={() => onEnqueue(track)}
+                  >
+                    <Plus class="w-3 h-3" />Q
+                  </button>
                   <button 
                     class="px-2 py-0.5 text-[9px] font-display font-semibold uppercase tracking-wider rounded border border-[var(--border-color)] hover:border-[#ff2a3b] hover:text-[#ff2a3b] bg-[var(--bg-input)]"
                     onclick={() => onLoadTrack('deck1', track)}
