@@ -15,11 +15,16 @@ export default class AudioDeck {
    * @param {string} id - Deck ID ('deck1' or 'deck2')
    * @param {AudioContext} audioContext - The shared audio context
    * @param {Function} onChange - Callback triggered when state updates
+   * @param {Object} [hooks] - Optional event hooks: { onTrackEnd(deckId) }
+   *   fired when the loaded track plays to completion. Pure transport —
+   *   queue auto-advance wires in here without the deck knowing the queue.
    */
-  constructor(id, audioContext, onChange) {
+  constructor(id, audioContext, onChange, hooks = {}) {
     this.id = id;
     this.audioContext = audioContext;
     this.onChange = onChange || (() => {});
+    this.hooks = hooks || {};
+    this.pendingSeek = 0; // resume offset (seconds) applied on loadedmetadata
 
     // State Variables
     this.playing = false;
@@ -131,6 +136,30 @@ export default class AudioDeck {
       this.playing = false;
       this.audio.currentTime = 0;
       this.notifyChange();
+      // Track played to completion — whoever wired onTrackEnd (queue
+      // auto-advance) decides what comes next. The deck itself just stops.
+      if (typeof this.hooks.onTrackEnd === 'function') {
+        try { this.hooks.onTrackEnd(this.id); } catch (e) {
+          console.warn('AudioDeck onTrackEnd hook failed:', e);
+        }
+      }
+    });
+
+    this.audio.addEventListener('loadedmetadata', () => {
+      // Resume-seek: apply the pending offset (set by loadTrack's startAt)
+      // once the duration is known, clamped inside the track so a stale
+      // saved position can never park the playhead past the end (which
+      // would fire 'ended' immediately and skip the track on resume).
+      if (this.pendingSeek > 0) {
+        const dur = this.audio.duration;
+        const safe = Number.isFinite(dur) && dur > 0
+          ? Math.min(this.pendingSeek, Math.max(0, dur - 0.25))
+          : this.pendingSeek;
+        this.audio.currentTime = Math.max(0, safe);
+        this.currentTime = this.audio.currentTime;
+        this.pendingSeek = 0;
+        this.notifyChange();
+      }
     });
   }
 
@@ -138,8 +167,10 @@ export default class AudioDeck {
    * Loads a track and extracts its details.
    * Supports local files (by converting to ObjectURL) and standard URLs.
    * @param {Object} track - The track dictionary containing metadata and URL
+   * @param {Object} [opts] - Optional: { startAt } resume offset in seconds,
+   *   applied on loadedmetadata and clamped inside the track duration.
    */
-  async loadTrack(track) {
+  async loadTrack(track, opts = {}) {
     if (!track) return;
 
     this.pause();
@@ -149,6 +180,11 @@ export default class AudioDeck {
     this.currentTime = 0;
     this.cuePoint = 0;
     this.waveformPeaks = [];
+
+    // Resume offset: garbage (NaN/negative/Infinity) collapses to 0 so a
+    // poisoned saved position can never park the deck somewhere invalid.
+    const startAt = opts && Number.isFinite(opts.startAt) ? Math.max(0, opts.startAt) : 0;
+    this.pendingSeek = startAt;
 
     // Loudness guard: seed per-track attenuation from metadata loudness when
     // the track carries it, otherwise start flat (1.0) until real decoded

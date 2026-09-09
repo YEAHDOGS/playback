@@ -4,8 +4,15 @@ import AudioDeck from './AudioDeck.js';
  * DjEngine coordinates multiple decks, master controls, and crossfading.
  */
 export default class DjEngine {
-  constructor(onChange) {
+  /**
+   * @param {Function} [onChange] - state change callback
+   * @param {Object} [hooks] - event hooks forwarded to each deck:
+   *   { onTrackEnd(deckId) } fires when a deck's track plays to completion
+   *   (queue auto-advance wires in here).
+   */
+  constructor(onChange, hooks = {}) {
     this.onChange = onChange || (() => {});
+    this.hooks = hooks || {};
     this.initialized = false;
     this.masterVolume = 0.8;
     this.crossfader = 0.0; // -1.0 (Left deck only) to +1.0 (Right deck only)
@@ -46,12 +53,12 @@ export default class DjEngine {
     this.deck1 = new AudioDeck('deck1', this.audioContext, (state) => {
       this.deck1State = state;
       this.notifyEngineChange();
-    });
+    }, { onTrackEnd: (deckId) => this.hooks.onTrackEnd?.(deckId) });
 
     this.deck2 = new AudioDeck('deck2', this.audioContext, (state) => {
       this.deck2State = state;
       this.notifyEngineChange();
-    });
+    }, { onTrackEnd: (deckId) => this.hooks.onTrackEnd?.(deckId) });
 
     // Connect deck outputs to mixer
     this.deck1.outputNode.connect(this.crossfaderGainL);
