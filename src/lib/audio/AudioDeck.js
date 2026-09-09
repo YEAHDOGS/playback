@@ -29,6 +29,7 @@ export default class AudioDeck {
     this.cuePoint = 0; // Cue position in seconds
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
+    this.loadError = null; // MEDIA_ERR_* code object from the last failed load, if any
     this.objectUrl = null; // blob URL we created for a local file (must be revoked)
     this.decodeToken = 0; // generation counter invalidating stale async waveform decodes
 
@@ -125,6 +126,16 @@ export default class AudioDeck {
       this.audio.currentTime = 0;
       this.notifyChange();
     });
+
+    this.audio.addEventListener('error', () => {
+      // The media element failed to load or decode its source (404, CORS,
+      // bad codec). Publish the error so the UI can show a broken-track
+      // state instead of leaving a silently dead deck.
+      const mediaError = this.audio.error;
+      this.loadError = { code: mediaError ? mediaError.code : 0 };
+      this.playing = false;
+      this.notifyChange();
+    });
   }
 
   /**
@@ -142,6 +153,7 @@ export default class AudioDeck {
     this.currentTime = 0;
     this.cuePoint = 0;
     this.waveformPeaks = [];
+    this.loadError = null; // a new load clears the previous track's error state
 
     // Revoke any previously created blob URL before loading a new source,
     // otherwise every track swap leaks one object URL (and its audio bytes).
@@ -402,7 +414,8 @@ export default class AudioDeck {
       eqHigh: this.eqHigh,
       cuePoint: this.cuePoint,
       isDecoding: this.isDecoding,
-      waveformPeaks: this.waveformPeaks
+      waveformPeaks: this.waveformPeaks,
+      loadError: this.loadError
     });
   }
 
