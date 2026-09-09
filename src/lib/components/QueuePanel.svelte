@@ -37,6 +37,7 @@
       <button
         class="p-1 rounded border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--color-text-muted)] hover:border-[var(--color-neon-red)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer"
         title={$t('queue.prev')}
+        aria-label={$t('queue.prev')}
         onclick={onPrev}
       >
         <SkipBack class="w-3.5 h-3.5" />
@@ -44,6 +45,7 @@
       <button
         class="p-1 rounded border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--color-text-muted)] hover:border-[var(--color-neon-red)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer"
         title={$t('queue.next')}
+        aria-label={$t('queue.next')}
         onclick={onNext}
       >
         <SkipForward class="w-3.5 h-3.5" />
@@ -51,6 +53,7 @@
       <button
         class="p-1 rounded border border-[var(--border-color)] bg-[var(--bg-input)] text-[var(--color-text-muted)] hover:border-[var(--color-neon-red)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer"
         title={$t('queue.clear')}
+        aria-label={$t('queue.clear')}
         onclick={onClear}
       >
         <Trash2 class="w-3.5 h-3.5" />
@@ -73,6 +76,7 @@
       {#each items as item, i (item.id)}
         <li
           class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[11px] transition-colors {i === currentIndex ? 'border-[var(--color-neon-red)] bg-[var(--color-neon-red-dim)]' : 'border-transparent hover:bg-[var(--bg-panel)]/40'}"
+          aria-current={i === currentIndex ? true : undefined}
         >
           <span class="font-mono text-[9px] text-[var(--color-text-muted)] w-5 text-center shrink-0">
             {i === currentIndex ? '▶' : i + 1}
@@ -85,6 +89,7 @@
             <button
               class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0"
               title={$t('queue.play')}
+              aria-label={$t('queue.play')}
               onclick={() => onPlayAt(i)}
             >
               <Play class="w-3.5 h-3.5" />
@@ -93,6 +98,7 @@
           <button
             class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0 disabled:opacity-25 disabled:pointer-events-none"
             title={$t('queue.move_up')}
+            aria-label={$t('queue.move_up')}
             onclick={() => onMoveUp(i)}
             disabled={i === 0}
           >
@@ -101,6 +107,7 @@
           <button
             class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0 disabled:opacity-25 disabled:pointer-events-none"
             title={$t('queue.move_down')}
+            aria-label={$t('queue.move_down')}
             onclick={() => onMoveDown(i)}
             disabled={i === items.length - 1}
           >
@@ -109,6 +116,7 @@
           <button
             class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0"
             title={$t('queue.remove')}
+            aria-label={$t('queue.remove')}
             onclick={() => onRemoveAt(i)}
           >
             <X class="w-3.5 h-3.5" />
