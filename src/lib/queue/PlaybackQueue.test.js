@@ -223,6 +223,80 @@ describe('PlaybackQueue no-autoplay-on-restore', () => {
   });
 });
 
+describe('PlaybackQueue storage failure resilience', () => {
+  it('should keep working in memory when setItem throws (quota exceeded), and save again when storage recovers', () => {
+    queue.add(track(1));
+    const rawBefore = storage.getItem(QUEUE_STORAGE_KEY);
+    expect(rawBefore).not.toBeNull();
+
+    // Simulate quota exhaustion: every write now throws.
+    const workingSetItem = storage.setItem;
+    storage.setItem = () => { throw new Error('QuotaExceededError'); };
+
+    // save() must not throw — it reports failure instead.
+    expect(queue.save()).toBe(false);
+
+    // Mutations still update in-memory state (and report save failure, not crash).
+    expect(queue.add(track(2))).toBe(true);
+    expect(queue.items.map((t) => t.id)).toEqual(['1', '2']);
+    expect(queue.move(0, 1)).toBe(true);
+    expect(queue.items.map((t) => t.id)).toEqual(['2', '1']);
+    expect(queue.removeAt(1).id).toBe('1');
+    expect(queue.length).toBe(1);
+
+    // Storage recovers: a later save succeeds and the state round-trips.
+    storage.setItem = workingSetItem;
+    expect(queue.save()).toBe(true);
+    const revived = new PlaybackQueue(storage);
+    const result = revived.restore([track(1), track(2)]);
+    expect(result.restored).toBe(true);
+    expect(revived.items.map((t) => t.id)).toEqual(['2']);
+  });
+
+  it('should restore cleanly (no throw) when getItem itself throws', () => {
+    storage.getItem = () => { throw new Error('storage locked'); };
+    const revived = new PlaybackQueue(storage);
+    expect(() => revived.restore([track(1)])).not.toThrow();
+    expect(revived.restore([track(1)]).restored).toBe(false);
+    expect(revived.isEmpty).toBe(true);
+  });
+});
+
+describe('PlaybackQueue move() clamping and pointer tracking', () => {
+  it('should clamp out-of-range indices instead of corrupting the queue', () => {
+    queue.add(track(1));
+    queue.add(track(2));
+    queue.add(track(3));
+    expect(queue.move(0, 99)).toBe(true); // clamped to the tail
+    expect(queue.items.map((t) => t.id)).toEqual(['2', '3', '1']);
+    expect(queue.move(2, -50)).toBe(true); // clamped to the head
+    expect(queue.items.map((t) => t.id)).toEqual(['1', '2', '3']);
+  });
+
+  it('should track the pointer when the moved track crosses it', () => {
+    queue.add(track(1));
+    queue.add(track(2));
+    queue.add(track(3));
+    queue.setIndex(2); // current = track 3
+    queue.move(0, 2); // track 1 moves past the pointer
+    expect(queue.items.map((t) => t.id)).toEqual(['2', '3', '1']);
+    expect(queue.current().id).toBe('3');
+    expect(queue.index).toBe(1);
+  });
+
+  it('should round-trip a reordered queue through storage', () => {
+    queue.add(track(1));
+    queue.add(track(2));
+    queue.add(track(3));
+    queue.setIndex(2);
+    queue.move(2, 0);
+    const revived = new PlaybackQueue(storage);
+    revived.restore([track(1), track(2), track(3)]);
+    expect(revived.items.map((t) => t.id)).toEqual(['3', '1', '2']);
+    expect(revived.current().id).toBe('3');
+  });
+});
+
 describe('PlaybackQueue URL scheme hardening', () => {
   it('should persist http/https URLs (demo tracks)', () => {
     const snap = snapshotTrack({ id: 'x', title: 't', artist: 'a', url: 'https://cdn.example.com/t.mp3' });
