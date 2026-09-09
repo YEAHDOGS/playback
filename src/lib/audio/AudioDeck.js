@@ -32,6 +32,7 @@ export default class AudioDeck {
     this.loadError = null; // MEDIA_ERR_* code object from the last failed load, if any
     this.objectUrl = null; // blob URL we created for a local file (must be revoked)
     this.decodeToken = 0; // generation counter invalidating stale async waveform decodes
+    this.destroyed = false; // lifecycle seal: once destroyed, async work goes silent
 
     // HTML5 Audio Element
     this.audio = new Audio();
@@ -398,6 +399,9 @@ export default class AudioDeck {
   }
 
   notifyChange() {
+    // A destroyed deck publishes nothing: late media-element events and
+    // in-flight async decodes must not reach listeners after teardown.
+    if (this.destroyed) return;
     this.onChange({
       id: this.id,
       playing: this.playing,
@@ -420,6 +424,13 @@ export default class AudioDeck {
   }
 
   destroy() {
+    // Seal the deck first: any waveform decode still in flight is orphaned
+    // (decodeToken bump invalidates it), and no further state changes or
+    // notifications escape to listeners after this point.
+    this.destroyed = true;
+    this.decodeToken++;
+    this.isDecoding = false;
+
     this.pause();
     this.audio.src = '';
     this.revokeObjectUrl();

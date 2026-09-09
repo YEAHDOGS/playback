@@ -638,3 +638,46 @@ describe('AudioDeck load error surfacing', () => {
     expect(states.at(-1).loadError).toBeNull();
   });
 });
+
+describe('AudioDeck post-destroy silence', () => {
+  it('publishes nothing when a media error arrives after destroy()', () => {
+    const { deck, states } = makeDeck();
+    const before = states.length;
+
+    deck.destroy();
+    deck.audio.error = { code: 2 }; // MEDIA_ERR_NETWORK, arriving late
+    fire(deck, 'error');
+
+    expect(states.length).toBe(before);
+  });
+
+  it('publishes nothing when an in-flight waveform decode finishes after destroy()', async () => {
+    const { deck, ctx, states } = makeDeck();
+    let resolveFetch;
+    globalThis.fetch.mockReturnValue(new Promise((res) => { resolveFetch = res; }));
+
+    deck.loadTrack(URL_TRACK); // decode starts, fetch hangs
+    deck.destroy();
+    const before = states.length;
+
+    resolveFetch({ arrayBuffer: async () => new ArrayBuffer(8) });
+    await tick();
+    const decodeCall = ctx.decodeCalls.at(-1);
+    decodeCall.successCb({ getChannelData: () => new Float32Array(16) });
+    await tick();
+
+    expect(deck.waveformPeaks).toEqual([]);
+    expect(states.length).toBe(before);
+  });
+
+  it('stays silent across a second destroy()', () => {
+    const { deck, states } = makeDeck();
+    deck.destroy();
+    const before = states.length;
+
+    deck.destroy();
+    fire(deck, 'ended');
+
+    expect(states.length).toBe(before);
+  });
+});
