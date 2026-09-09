@@ -1,13 +1,24 @@
 <script>
   // Svelte 5 Runes for properties
-  let { 
-    value = $bindable(0), 
-    min = -12, 
-    max = 12, 
-    step = 0.1, 
-    label = '', 
-    resetValue = 0 
+  let {
+    value = $bindable(0),
+    min = -12,
+    max = 12,
+    step = 0.1,
+    label = '',
+    resetValue = 0,
+    onvaluechange = () => {} // callback(value) — fired whenever the knob value changes
   } = $props();
+
+  // Emit the committed value to the parent control surface
+  function commit(newValue) {
+    const clamped = Math.max(min, Math.min(max, newValue));
+    const stepped = Math.round(clamped / step) * step;
+    if (stepped !== value) {
+      value = stepped;
+      onvaluechange(value);
+    }
+  }
 
   let startY = 0;
   let startValue = 0;
@@ -20,7 +31,7 @@
   });
 
   function handleDoubleClick() {
-    value = resetValue;
+    commit(resetValue);
   }
 
   function handleMouseDown(e) {
@@ -39,11 +50,8 @@
     const range = max - min;
     const sensitivity = 0.005; // Drag sensitivity
     const delta = dy * range * sensitivity;
-    
-    let newValue = startValue + delta;
-    newValue = Math.max(min, Math.min(max, newValue));
-    // Apply step rounding
-    value = Math.round(newValue / step) * step;
+
+    commit(startValue + delta);
   }
 
   function handleMouseUp() {
@@ -71,9 +79,7 @@
     const sensitivity = 0.008;
     const delta = dy * range * sensitivity;
 
-    let newValue = startValue + delta;
-    newValue = Math.max(min, Math.min(max, newValue));
-    value = Math.round(newValue / step) * step;
+    commit(startValue + delta);
   }
 
   function handleTouchEnd() {
