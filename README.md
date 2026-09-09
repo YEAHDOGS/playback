@@ -115,3 +115,7 @@ What *is* feasible without credentials: direct audio file URLs (already works �
 - Logic lives in `src/lib`, never mixed into markup; no file over 1000 lines
 - Zero-warning compilation is the bar — a warning is a future bug
 - Work happens on branches; **never push, never touch master from automation**
+
+## License
+
+MIT — see [LICENSE](LICENSE).
