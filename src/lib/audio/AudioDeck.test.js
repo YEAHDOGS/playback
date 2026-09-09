@@ -225,3 +225,49 @@ describe('AudioDeck onTrackEnd hook', () => {
     expect(deck.playing).toBe(false);
   });
 });
+
+// --- Malformed drop payloads: loadTrack() source validation -----------------
+// loadTrack is reachable from drag-and-drop text/plain payloads, which any
+// page or app can produce. A truthy-but-not-Blob `file` or a non-media `url`
+// scheme must never throw or wedge the deck.
+
+describe('AudioDeck loadTrack source validation (drop-payload hardening)', () => {
+  it('should refuse a track whose file is truthy but not a Blob — no throw, deck untouched', async () => {
+    const deck = makeDeck();
+    // Regression: JSON-serialized TrackList drops arrive as { file: {} }.
+    await expect(deck.loadTrack({ id: 'x', file: {} })).resolves.toBeUndefined();
+    expect(deck.loadedTrack).toBeNull();
+    expect(deck.audio.src).toBe('');
+  });
+
+  it('should refuse javascript: and file: URL schemes', async () => {
+    const deck = makeDeck();
+    for (const bad of ['javascript:alert(1)', 'file:///etc/passwd', 'ftp://x/y.mp3']) {
+      await expect(deck.loadTrack({ id: 'x', url: bad })).resolves.toBeUndefined();
+      expect(deck.loadedTrack).toBeNull();
+      expect(deck.audio.src).not.toContain('javascript:');
+    }
+    expect(deck.audio.src).toBe('');
+  });
+
+  it('should still load a real Blob file and a valid https URL', async () => {
+    const deck = makeDeck();
+    await deck.loadTrack({ id: 'local', file: new Blob(['fake-audio'], { type: 'audio/mpeg' }) });
+    expect(deck.loadedTrack).not.toBeNull();
+    expect(deck.audio.src.startsWith('blob:')).toBe(true);
+
+    const deck2 = makeDeck();
+    await deck2.loadTrack({ id: 'stream', url: 'https://example.com/track.mp3' });
+    expect(deck2.loadedTrack).not.toBeNull();
+    expect(deck2.audio.src).toBe('https://example.com/track.mp3');
+  });
+
+  it('should leave a healthy deck alone when a poisoned payload arrives mid-session', async () => {
+    const deck = makeDeck();
+    await deck.loadTrack({ id: 'good', url: 'https://example.com/good.mp3' });
+    const before = deck.audio.src;
+    await deck.loadTrack({ id: 'evil', file: { not: 'a-blob' }, url: 'javascript:evil()' });
+    expect(deck.loadedTrack.id).toBe('good');
+    expect(deck.audio.src).toBe(before);
+  });
+});

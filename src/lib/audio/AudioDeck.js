@@ -10,6 +10,8 @@ const TARGET_LOUDNESS_DB = -14;        // reference integrated loudness when tra
 const MIN_TRACK_GAIN = 0.25;           // max -12dB attenuation; never mutes the deck
 const MAX_TRACK_GAIN = 1.0;            // attenuate-only: boosting risks clipping into the EQ stack
 
+import { isPersistableUrl } from '../queue/PlaybackQueue.js';
+
 export default class AudioDeck {
   /**
    * @param {string} id - Deck ID ('deck1' or 'deck2')
@@ -173,6 +175,19 @@ export default class AudioDeck {
   async loadTrack(track, opts = {}) {
     if (!track) return;
 
+    // Validate the source FIRST, before any deck state is touched. loadTrack
+    // is reachable from drag-and-drop payloads (any page or app can drop
+    // text/plain into the window), so a truthy-but-not-Blob `file` or a
+    // non-media `url` scheme must never throw or arm a bogus src. On invalid
+    // input the deck is left exactly as it was: loadedTrack is NOT replaced
+    // and no exception escapes.
+    const file = track.file instanceof Blob ? track.file : null;
+    const url = typeof track.url === 'string' && isPersistableUrl(track.url) ? track.url : null;
+    if (!file && !url) {
+      console.warn('AudioDeck: refusing to load track with no valid source (file must be a Blob, url must be http(s)/data/relative).');
+      return;
+    }
+
     this.pause();
     this.loadedTrack = track;
     this.bpm = track.bpm || 120;
@@ -193,14 +208,14 @@ export default class AudioDeck {
     this.trackGain = AudioDeck.calculateTrackGainFromDb(track.loudnessDb);
     this.applyGain();
 
-    // Load track source
-    if (track.file) {
+    // Load track source (both validated above)
+    if (file) {
       // Local File object
-      const objectUrl = URL.createObjectURL(track.file);
+      const objectUrl = URL.createObjectURL(file);
       this.audio.src = objectUrl;
     } else {
       // Stream URL
-      this.audio.src = track.url;
+      this.audio.src = url;
     }
 
     this.audio.load();
