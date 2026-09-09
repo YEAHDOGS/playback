@@ -56,7 +56,9 @@
     "prev": "Previous in queue",
     "next": "Next in queue",
     "enqueue": "Add to queue",
-    "dropped": "{count} saved track(s) were removed — they are no longer in the library."
+    "dropped": "{count} saved track(s) were removed — they are no longer in the library.",
+    "move_up": "Move up",
+    "move_down": "Move down"
   },
   "settings": {
     "header": "Settings",

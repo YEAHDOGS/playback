@@ -153,6 +153,10 @@
     if (queue) queue.removeAt(i);
   }
 
+  function moveQueueAt(i, dir) {
+    if (queue) queue.move(i, i + dir);
+  }
+
   function clearQueue() {
     if (queue) queue.clear();
   }
@@ -387,6 +391,8 @@
                 droppedCount={queueDropped}
                 onPlayAt={(i) => playQueueAt(i)}
                 onRemoveAt={(i) => removeQueueAt(i)}
+                onMoveUp={(i) => moveQueueAt(i, -1)}
+                onMoveDown={(i) => moveQueueAt(i, 1)}
                 onClear={clearQueue}
                 onPrev={() => queueStep(-1)}
                 onNext={() => queueStep(1)}
