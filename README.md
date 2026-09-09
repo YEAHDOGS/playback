@@ -10,6 +10,7 @@ A web-based, customizable DJ interface — two decks, a mixer, and a track libra
 - **Mixer** — 3-band EQ per channel, channel volumes, LED level meters, equal-power crossfader, master volume
 - **Waveforms** — decoded offline via `decodeAudioData` (300 peaks/track) with click-to-seek; falls back to a synthetic waveform when CORS or decoding fails
 - **Track library** — loads with three sample MP3s streamed from soundhelix.com (needs internet), plus search, local file upload (MP3/WAV via drag & drop or file picker)
+- **Persistent playback queue** — your track order survives reloads (`localStorage`); reopens paused at the saved track and position, never autoplayed. Entries that no longer exist in the catalog are pruned on boot. See `src/lib/queue/PlaybackQueue.js`
 - **Themes** — Night (neon red/black) and Daytime (icy white), persisted per session
 - **i18n** — English + Spanish via `svelte-i18n`; strings live in `src/locales/`
 - **MIDI controllers** — connect hardware via Web MIDI in Settings; see [MIDI](#midi-controllers) below
@@ -20,7 +21,7 @@ A web-based, customizable DJ interface — two decks, a mixer, and a track libra
 ```bash
 npm install
 npm run dev      # dev server with hot reload
-npm test         # vitest suite (crossfader math)
+npm test         # vitest suite: crossfader math, loudness guard, queue persistence
 ```
 
 `npm run dev` is the way Brandon runs it day-to-day; per repo convention the production build isn't the verification path.
@@ -42,6 +43,9 @@ src/
 │   │   ├── AudioDeck.js        # one deck: HTMLAudioElement -> EQ -> gain -> analyser
 │   │   ├── MidiBridge.js       # Web MIDI -> DjEngine bindings (default map + overrides)
 │   │   └── DjEngine.test.js    # equal-power crossfader math tests
+│   ├── queue/
+│   │   ├── PlaybackQueue.js      # persistent queue: localStorage, reorder, stale pruning
+│   │   └── PlaybackQueue.test.js # queue persistence regression tests
 │   ├── components/
 │   │   ├── Platter.svelte      # jog wheel, pitch fader, transport, hot cues
 │   │   ├── Mixer.svelte        # EQs, channel faders, LED meters, crossfader
@@ -80,6 +84,26 @@ Pitch is implemented with `playbackRate` (simple, low-latency, pitch-shifts with
 | `↑` / `↓` | Master volume |
 
 Shortcuts are ignored while typing in the library search or any input.
+
+## Persistent playback queue
+
+The queue is the persistent bit of your session. It lives in `localStorage`
+(`playback.queue.v1`) and survives reloads:
+
+- Every change is saved immediately — add, play-next, remove, reorder, clear.
+- On boot, the queue rehydrates against the current track catalog: entries whose
+  track id no longer exists are dropped (the drop count is reported back so the
+  UI can note it), and the saved track index / seek position are restored.
+- **Restoring never starts playback.** Browsers block autoplay without a user
+  gesture, so the correct behavior is "resume paused at the saved track and
+  position" — the queue module exposes no `play()` at all; audio starts only
+  from a gesture in the UI.
+- Corrupt or version-mismatched stored data boots to an empty queue rather than
+  poisoning state. Local uploads are stripped to serializable metadata on save
+  (`File` blobs can't survive a reload).
+
+Wire-up note: `PlaybackQueue` is intentionally pure — `App.svelte` calls
+`restore(catalog)` on boot and feeds `current()` / `next()` into the decks.
 
 ## MIDI controllers
 
