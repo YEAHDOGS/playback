@@ -62,7 +62,7 @@
   </div>
 
   {#if droppedCount > 0}
-    <p class="text-[10px] text-amber-400/90 leading-snug">
+    <p role="status" class="text-[10px] text-amber-400/90 leading-snug">
       {$t('queue.dropped', { values: { count: droppedCount } })}
     </p>
   {/if}
@@ -72,7 +72,7 @@
       {$t('queue.empty')}
     </p>
   {:else}
-    <ol class="flex flex-col gap-1 max-h-40 overflow-y-auto">
+    <ol aria-label={$t('queue.list')} class="flex flex-col gap-1 max-h-40 overflow-y-auto">
       {#each items as item, i (item.id)}
         <li
           class="flex items-center gap-2 px-2 py-1.5 rounded-lg border text-[11px] transition-colors {i === currentIndex ? 'border-[var(--color-neon-red)] bg-[var(--color-neon-red-dim)]' : 'border-transparent hover:bg-[var(--bg-panel)]/40'}"

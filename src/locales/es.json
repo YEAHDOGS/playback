@@ -49,6 +49,7 @@
   },
   "queue": {
     "header": "A Continuación",
+    "list": "Cola de sesión",
     "empty": "La cola está vacía — pasa el cursor sobre una pista y pulsa +Q para añadirla. Tu cola sobrevive a recargas.",
     "play": "Reproducir ahora",
     "remove": "Quitar de la cola",
