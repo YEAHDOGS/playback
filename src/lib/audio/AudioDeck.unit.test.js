@@ -601,3 +601,40 @@ describe('AudioDeck destroy()', () => {
     expect(() => deck.destroy()).not.toThrow();
   });
 });
+
+describe('AudioDeck load error surfacing', () => {
+  it('starts with loadError null', () => {
+    const { deck, states } = makeDeck();
+    expect(deck.loadError).toBeNull();
+    expect(states[0].loadError).toBeNull();
+  });
+
+  it('publishes the media error code when the audio element fails', () => {
+    const { deck, states } = makeDeck();
+    // MEDIA_ERR_NETWORK
+    deck.audio.error = { code: 2 };
+    fire(deck, 'error');
+
+    expect(deck.loadError).toEqual({ code: 2 });
+    expect(deck.playing).toBe(false);
+    expect(states.at(-1).loadError).toEqual({ code: 2 });
+  });
+
+  it('still surfaces an error when audio.error is absent', () => {
+    const { deck } = makeDeck();
+    deck.audio.error = undefined;
+    expect(() => fire(deck, 'error')).not.toThrow();
+    expect(deck.loadError).toEqual({ code: 0 });
+  });
+
+  it('clears loadError when a new track is loaded', async () => {
+    const { deck, states } = makeDeck();
+    deck.audio.error = { code: 3 }; // MEDIA_ERR_DECODE
+    fire(deck, 'error');
+    expect(deck.loadError).toEqual({ code: 3 });
+
+    await deck.loadTrack(URL_TRACK);
+    expect(deck.loadError).toBeNull();
+    expect(states.at(-1).loadError).toBeNull();
+  });
+});
