@@ -56,7 +56,9 @@
     "prev": "Anterior en la cola",
     "next": "Siguiente en la cola",
     "enqueue": "Añadir a la cola",
-    "dropped": "{count} pista(s) guardada(s) fueron eliminadas — ya no están en la biblioteca."
+    "dropped": "{count} pista(s) guardada(s) fueron eliminadas — ya no están en la biblioteca.",
+    "move_up": "Subir",
+    "move_down": "Bajar"
   },
   "settings": {
     "header": "Ajustes",

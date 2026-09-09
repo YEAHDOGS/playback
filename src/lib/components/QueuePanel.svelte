@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n.js';
-  import { ListMusic, Play, X, Trash2, SkipBack, SkipForward } from 'lucide-svelte';
+  import { ListMusic, Play, X, Trash2, SkipBack, SkipForward, ChevronUp, ChevronDown } from 'lucide-svelte';
 
   // Renders the persistent session queue (PlaybackQueue instance). Pure
   // presentation — every button fans out to callbacks owned by App.svelte.
@@ -11,7 +11,9 @@
     onRemoveAt = () => {},
     onClear = () => {},
     onPrev = () => {},
-    onNext = () => {}
+    onNext = () => {},
+    onMoveUp = () => {},
+    onMoveDown = () => {}
   } = $props();
 
   const items = $derived(queue ? queue.items : []);
@@ -88,6 +90,22 @@
               <Play class="w-3.5 h-3.5" />
             </button>
           {/if}
+          <button
+            class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0 disabled:opacity-25 disabled:pointer-events-none"
+            title={$t('queue.move_up')}
+            onclick={() => onMoveUp(i)}
+            disabled={i === 0}
+          >
+            <ChevronUp class="w-3.5 h-3.5" />
+          </button>
+          <button
+            class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0 disabled:opacity-25 disabled:pointer-events-none"
+            title={$t('queue.move_down')}
+            onclick={() => onMoveDown(i)}
+            disabled={i === items.length - 1}
+          >
+            <ChevronDown class="w-3.5 h-3.5" />
+          </button>
           <button
             class="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] transition-colors cursor-pointer shrink-0"
             title={$t('queue.remove')}
