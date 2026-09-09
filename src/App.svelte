@@ -3,6 +3,7 @@
   import { locale, t } from './lib/i18n.js';
   import DjEngine from './lib/audio/DjEngine.js';
   import MidiBridge from './lib/audio/MidiBridge.js';
+  import { attachKeyboardShortcuts } from './lib/keyboard.js';
   import Platter from './lib/components/Platter.svelte';
   import Mixer from './lib/components/Mixer.svelte';
   import Waveform from './lib/components/Waveform.svelte';
@@ -35,8 +36,13 @@
       engineState = state;
     });
 
+    // Keyboard transport shortcuts (Space, X, C/V, S, arrows)
+    const detachKeys = attachKeyboardShortcuts(engine);
+
     return () => {
+      detachKeys();
       if (engine) engine.destroy();
+      if (midiBridge) midiBridge.destroy();
     };
   });
 
