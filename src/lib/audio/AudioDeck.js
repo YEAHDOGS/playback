@@ -316,7 +316,9 @@ export default class AudioDeck {
    */
   scrub(percent) {
     if (!this.duration) return;
-    this.audio.currentTime = percent * this.duration;
+    // Clamp: out-of-range platter input must never seek past the track bounds.
+    const clamped = Math.max(0, Math.min(1, percent));
+    this.audio.currentTime = clamped * this.duration;
     this.currentTime = this.audio.currentTime;
     this.notifyChange();
   }
