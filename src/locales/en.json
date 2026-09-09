@@ -23,6 +23,7 @@
   "library": {
     "search": "Search track title or artist...",
     "drag_drop": "Drag & Drop local audio files (MP3/WAV) here, or double-click to load",
+    "dblclick_load": "Double-click to load onto this deck",
     "header": "Track Library",
     "title": "Title",
     "artist": "Artist",

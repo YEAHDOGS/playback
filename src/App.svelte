@@ -6,7 +6,7 @@
   import Mixer from './lib/components/Mixer.svelte';
   import Waveform from './lib/components/Waveform.svelte';
   import TrackList from './lib/components/TrackList.svelte';
-  import { Settings, X, Globe, Moon, Sun, Cable, Play, Music } from 'lucide-svelte';
+  import { Settings, X, Globe, Moon, Sun, Play, Music } from 'lucide-svelte';
 
   let engine = $state(null);
   let engineState = $state({
@@ -52,6 +52,13 @@
 
   function selectLanguage(lang) {
     $locale = lang;
+  }
+
+  // Load a track into the requested deck ('deck1' | 'deck2')
+  function loadTrackInto(deckId, track) {
+    if (!engine || !track) return;
+    const deck = deckId === 'deck2' ? engine.deck2 : engine.deck1;
+    deck.loadTrack(track);
   }
 
   // Handle drops onto Deck containers
@@ -218,7 +225,8 @@
           />
           <div class="flex-1 min-h-0">
             <TrackList 
-              onLoadTrack={(ignoredId, track) => engine.deck1.loadTrack(track)}
+              defaultDeck="deck1"
+              onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
             />
           </div>
         </div>
@@ -265,7 +273,8 @@
           />
           <div class="flex-1 min-h-0">
             <TrackList 
-              onLoadTrack={(ignoredId, track) => engine.deck2.loadTrack(track)}
+              defaultDeck="deck2"
+              onLoadTrack={(deckId, track) => loadTrackInto(deckId, track)}
             />
           </div>
         </div>

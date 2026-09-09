@@ -1,10 +1,11 @@
 <script>
   import { t } from '../i18n.js';
-  import { Search, Plus, Upload, Play, Disc } from 'lucide-svelte';
+  import { Search, Upload, Disc } from 'lucide-svelte';
 
   // Svelte 5 props
   let {
-    onLoadTrack = () => {} // callback: (deckId, track)
+    onLoadTrack = () => {}, // callback: (deckId, track)
+    defaultDeck = 'deck1'   // deck that double-click loads into (per-column)
   } = $props();
 
   let searchQuery = $state('');
@@ -170,9 +171,11 @@
         <tbody class="divide-y divide-[var(--border-color)]">
           {#each filteredTracks as track (track.id)}
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <tr 
+            <tr
               draggable="true"
               ondragstart={(e) => handleDragStart(e, track)}
+              ondblclick={() => onLoadTrack(defaultDeck, track)}
+              title={$t('library.dblclick_load')}
               class="hover:bg-[var(--bg-panel)]/40 cursor-grab active:cursor-grabbing transition-colors group"
             >
               <td class="py-2 px-3 text-center">
