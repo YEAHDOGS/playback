@@ -222,3 +222,28 @@ describe('PlaybackQueue no-autoplay-on-restore', () => {
     expect(revived.index).toBe(queue.index);
   });
 });
+
+describe('PlaybackQueue URL scheme hardening', () => {
+  it('should persist http/https URLs (demo tracks)', () => {
+    const snap = snapshotTrack({ id: 'x', title: 't', artist: 'a', url: 'https://cdn.example.com/t.mp3' });
+    expect(snap.url).toBe('https://cdn.example.com/t.mp3');
+  });
+
+  it('should persist relative URLs (resolve against page origin)', () => {
+    const snap = snapshotTrack({ id: 'x', title: 't', artist: 'a', url: '/audio/t.mp3' });
+    expect(snap.url).toBe('/audio/t.mp3');
+  });
+
+  it('should drop non-media schemes: javascript:, file:, blob: (revoked on reload)', () => {
+    expect(snapshotTrack({ id: 'a', title: 't', artist: 'a', url: 'javascript:alert(1)' }).url).toBeUndefined();
+    expect(snapshotTrack({ id: 'b', title: 't', artist: 'a', url: 'file:///etc/hosts' }).url).toBeUndefined();
+    expect(snapshotTrack({ id: 'c', title: 't', artist: 'a', url: 'blob:https://x/y' }).url).toBeUndefined();
+  });
+
+  it('should keep the rest of the snapshot even when the URL is dropped', () => {
+    const snap = snapshotTrack({ id: 'c', title: 'Title', artist: 'Art', url: 'javascript:alert(1)' });
+    expect(snap.id).toBe('c');
+    expect(snap.title).toBe('Title');
+    expect(snap.url).toBeUndefined();
+  });
+});
