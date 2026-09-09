@@ -204,7 +204,10 @@
         >
           <Platter 
             deckState={engineState.deck1 || {}} 
-            deck={engine.deck1} 
+            deck={engine.deck1}
+            {engine}
+            syncSourceId="deck2"
+            syncSourceBpm={engineState.deck2?.currentBpm}
           />
           <Waveform 
             peaks={engineState.deck1?.waveformPeaks}
@@ -248,7 +251,10 @@
         >
           <Platter 
             deckState={engineState.deck2 || {}} 
-            deck={engine.deck2} 
+            deck={engine.deck2}
+            {engine}
+            syncSourceId="deck1"
+            syncSourceBpm={engineState.deck1?.currentBpm}
           />
           <Waveform 
             peaks={engineState.deck2?.waveformPeaks}
