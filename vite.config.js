@@ -12,4 +12,11 @@ export default defineConfig({
     tailwindcss(),
     svelte()
   ],
+  // Component tests (`npm test`): jsdom + the browser condition so `svelte`
+  // resolves to the client build (mount/render) instead of the server entry.
+  // Gated on VITEST so dev/build resolution stays on vite's defaults.
+  test: {
+    environment: 'jsdom',
+  },
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
 })
