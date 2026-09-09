@@ -61,3 +61,50 @@ describe('DjEngine mixer setter clamps', () => {
     expect(engine.masterVolume).toBeCloseTo(0.55, 5);
   });
 });
+
+describe('DjEngine crossfader audio-graph wiring (mocked nodes)', () => {
+  // No Web Audio here: inject minimal gain-node stand-ins and assert the
+  // engine pushes the pure equal-power gains into the graph, at the right
+  // time, whenever setCrossfader() runs.
+  function mockGainNode() {
+    const calls = [];
+    return {
+      calls,
+      gain: { setValueAtTime: (value, when) => calls.push([value, when]) },
+      connect() {},
+    };
+  }
+
+  function wiredEngine() {
+    const engine = new DjEngine();
+    engine.crossfaderGainL = mockGainNode();
+    engine.crossfaderGainR = mockGainNode();
+    engine.audioContext = { currentTime: 123.4 };
+    return engine;
+  }
+
+  it('should push the pure-calc gains into the graph on setCrossfader()', () => {
+    const engine = wiredEngine();
+    engine.setCrossfader(1.0);
+    const expected = DjEngine.calculateCrossfaderGains(1.0);
+    expect(engine.crossfaderGainL.calls).toEqual([[expected.gainL, 123.4]]);
+    expect(engine.crossfaderGainR.calls).toEqual([[expected.gainR, 123.4]]);
+  });
+
+  it('should update both nodes when the fader moves mid-session', () => {
+    const engine = wiredEngine();
+    engine.setCrossfader(-0.5);
+    engine.setCrossfader(0.0);
+    expect(engine.crossfaderGainL.calls).toHaveLength(2);
+    expect(engine.crossfaderGainR.calls).toHaveLength(2);
+    const last = engine.crossfaderGainL.calls[1];
+    const expected = DjEngine.calculateCrossfaderGains(0.0);
+    expect(last[0]).toBeCloseTo(expected.gainL, 10);
+  });
+
+  it('should be a no-op (never throw) when the audio graph is not built yet', () => {
+    const engine = new DjEngine(); // init() not called: no nodes
+    expect(() => engine.setCrossfader(0.75)).not.toThrow();
+    expect(engine.crossfader).toBeCloseTo(0.75, 5);
+  });
+});
