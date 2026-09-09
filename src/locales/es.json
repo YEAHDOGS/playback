@@ -50,5 +50,15 @@
     "theme_daytime": "Día (Blanco Hielo)",
     "language": "Idioma",
     "close": "Cerrar"
+  },
+  "shortcuts": {
+    "title": "Atajos de Teclado",
+    "close": "Cerrar atajos",
+    "play_pause": "Reproducir / Pausar (Deck 1)",
+    "seek": "Atrás / Adelante 10s (Deck 1)",
+    "volume": "Volumen maestro - / +",
+    "mute": "Silenciar / Activar maestro",
+    "overlay": "Mostrar esta guía",
+    "hint": "Las teclas de reproducción, salto y volumen actúan sobre el Deck 1. Los atajos se quedan quietos mientras escribes en un campo de texto — pulsa ? para abrir esta guía en cualquier momento."
   }
 }
