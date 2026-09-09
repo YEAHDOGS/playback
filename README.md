@@ -26,6 +26,14 @@ npm test         # vitest suite: crossfader math, loudness guard, queue persiste
 
 `npm run dev` is the way Brandon runs it day-to-day; per repo convention the production build isn't the verification path.
 
+### Staging on GitHub Pages
+
+The Pages project URL is `https://yeahdogs.github.io/playback/`, so assets must live under `/playback/`. Build staging with:
+
+```bash
+GITHUB_PAGES=1 npx vite build   # base becomes /playback/; plain dev/build stays at /
+```
+
 ### First 60 seconds
 
 1. Open the dev-server URL, then click **Start DJing** — browsers only unlock the Web Audio context on a user gesture, so nothing makes sound until you do.
