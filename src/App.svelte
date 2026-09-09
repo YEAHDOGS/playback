@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { locale, t } from './lib/i18n.js';
   import DjEngine from './lib/audio/DjEngine.js';
+  import MidiBridge from './lib/audio/MidiBridge.js';
   import Platter from './lib/components/Platter.svelte';
   import Mixer from './lib/components/Mixer.svelte';
   import Waveform from './lib/components/Waveform.svelte';
@@ -20,6 +21,10 @@
   // UI state variables
   let showSettings = $state(false);
   let activeTheme = $state('Night'); // 'Night' or 'Daytime'
+
+  // MIDI controller bridge state
+  let midiBridge = $state(null);
+  let midiState = $state({ status: 'idle', supported: false, devices: [] });
   
   // Mobile tab state: 'deck1' | 'mixer' | 'deck2' | 'library'
   let mobileTab = $state('deck1');
@@ -52,6 +57,18 @@
 
   function selectLanguage(lang) {
     $locale = lang;
+  }
+
+  // Connect a hardware MIDI DJ controller (Web MIDI, user-gesture only)
+  async function connectMidi() {
+    if (!engine || midiBridge) return;
+    midiBridge = new MidiBridge(engine, {
+      onChange: (state) => { midiState = state; },
+      onUnhandled: (msg) => {
+        console.debug('[MIDI] unmapped message — add it to MidiBridge map:', msg);
+      }
+    });
+    await midiBridge.connect();
   }
 
   // Load a track into the requested deck ('deck1' | 'deck2')
@@ -346,9 +363,9 @@
           </label>
           <div class="relative">
             <Globe class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
-            <select 
+            <select
               id="language-select"
-              value={$locale} 
+              value={$locale}
               onchange={(e) => selectLanguage(e.target.value)}
               class="w-full pl-9 pr-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-neon-red)] cursor-pointer appearance-none"
             >
@@ -358,6 +375,34 @@
           </div>
         </div>
 
+        <!-- MIDI controller status -->
+        <div class="flex flex-col gap-2">
+          <span class="block text-[10px] font-display uppercase tracking-wider text-[var(--color-text-muted)] font-bold">
+            {$t('midi.title')}
+          </span>
+          <div class="flex items-center gap-2 text-xs text-[var(--color-text)]">
+            <div class="w-2 h-2 rounded-full {midiState.status === 'connected' && midiState.devices.length > 0 ? 'bg-emerald-500' : midiState.status === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}"></div>
+            <span class="font-medium">
+              {#if !midiState.supported && midiState.status !== 'idle'}
+                {$t('midi.unsupported')}
+              {:else if midiState.status === 'connected' && midiState.devices.length > 0}
+                {$t('midi.connected')}: {midiState.devices.map(d => d.name).join(', ')}
+              {:else if midiState.status === 'connecting'}
+                {$t('midi.connecting')}
+              {:else}
+                {$t('midi.no_device')}
+              {/if}
+            </span>
+          </div>
+          {#if !midiBridge}
+            <button
+              class="py-1.5 px-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] hover:border-[var(--color-neon-red)] hover:text-[var(--color-neon-red)] text-[var(--color-text-muted)] text-xs font-semibold transition-colors cursor-pointer"
+              onclick={connectMidi}
+            >
+              {$t('midi.connect')}
+            </button>
+          {/if}
+        </div>
 
       </div>
 
