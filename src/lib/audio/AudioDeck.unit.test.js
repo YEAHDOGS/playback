@@ -263,6 +263,66 @@ describe('AudioDeck loadTrack()', () => {
   });
 });
 
+describe('AudioDeck waveform decode race', () => {
+  beforeEach(() => {
+    globalThis.fetch.mockResolvedValue({
+      arrayBuffer: async () => new ArrayBuffer(16),
+    });
+  });
+
+  it('ignores a stale success decode from the previous track', async () => {
+    const { deck, ctx } = makeDeck();
+    await deck.loadTrack(FILE_TRACK); // decode token 1
+    await tick();
+    await tick();
+    await deck.loadTrack(URL_TRACK); // decode token 2
+    await tick();
+    await tick();
+
+    expect(ctx.decodeCalls.length).toBe(2);
+
+    // The first decode resolves AFTER the second track was loaded.
+    ctx.decodeCalls[0].successCb({
+      getChannelData: () => new Float32Array(600).fill(0.5),
+    });
+
+    // Stale peaks must not be applied; deck is still waiting on the new track.
+    expect(deck.waveformPeaks).toEqual([]);
+    expect(deck.isDecoding).toBe(true);
+    expect(deck.loadedTrack).toBe(URL_TRACK);
+
+    // The current track's decode still applies.
+    ctx.decodeCalls[1].successCb({
+      getChannelData: () => new Float32Array(600).fill(0.25),
+    });
+
+    expect(deck.waveformPeaks).toHaveLength(300);
+    expect(deck.waveformPeaks.every((p) => p === 0.25)).toBe(true);
+    expect(deck.isDecoding).toBe(false);
+  });
+
+  it('ignores a stale error decode from the previous track', async () => {
+    const { deck, ctx } = makeDeck();
+    await deck.loadTrack(FILE_TRACK); // decode token 1
+    await tick();
+    await tick();
+    await deck.loadTrack(URL_TRACK); // decode token 2
+    await tick();
+    await tick();
+
+    // The first decode errors out after the swap: no synthetic fallback for
+    // the old track, decode state still belongs to the new track.
+    ctx.decodeCalls[0].errorCb(new Error('stale decode'));
+    expect(deck.waveformPeaks).toEqual([]);
+    expect(deck.isDecoding).toBe(true);
+
+    // The new track's own error still falls back to synthetic peaks.
+    ctx.decodeCalls[1].errorCb(new Error('bad data'));
+    expect(deck.waveformPeaks).toHaveLength(300);
+    expect(deck.isDecoding).toBe(false);
+  });
+});
+
 describe('AudioDeck transport', () => {
   it('play() is a safe no-op with no track loaded', async () => {
     const { deck } = makeDeck();
