@@ -29,6 +29,7 @@ export default class AudioDeck {
     this.cuePoint = 0; // Cue position in seconds
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
+    this.objectUrl = null; // blob URL we created for a local file (must be revoked)
 
     // HTML5 Audio Element
     this.audio = new Audio();
@@ -141,10 +142,15 @@ export default class AudioDeck {
     this.cuePoint = 0;
     this.waveformPeaks = [];
 
+    // Revoke any previously created blob URL before loading a new source,
+    // otherwise every track swap leaks one object URL (and its audio bytes).
+    this.revokeObjectUrl();
+
     // Load track source
     if (track.file) {
       // Local File object
       const objectUrl = URL.createObjectURL(track.file);
+      this.objectUrl = objectUrl;
       this.audio.src = objectUrl;
     } else {
       // Stream URL
@@ -340,6 +346,21 @@ export default class AudioDeck {
     return average / 255; // Normalize to 0..1
   }
 
+  /**
+   * Releases the blob object URL created by the last file-based loadTrack(),
+   * if any. Safe to call repeatedly or when nothing is tracked.
+   */
+  revokeObjectUrl() {
+    if (!this.objectUrl) return;
+    try {
+      URL.revokeObjectURL(this.objectUrl);
+    } catch (e) {
+      console.warn("Could not revoke object URL:", e);
+    } finally {
+      this.objectUrl = null;
+    }
+  }
+
   notifyChange() {
     this.onChange({
       id: this.id,
@@ -364,6 +385,7 @@ export default class AudioDeck {
   destroy() {
     this.pause();
     this.audio.src = '';
+    this.revokeObjectUrl();
     try {
       this.lowFilter.disconnect();
       this.midFilter.disconnect();

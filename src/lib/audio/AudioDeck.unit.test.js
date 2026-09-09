@@ -97,6 +97,7 @@ beforeEach(() => {
   globalThis.Audio = MockAudio;
   globalThis.window = {};
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+  globalThis.URL.revokeObjectURL = vi.fn();
   globalThis.fetch = vi.fn();
 });
 
@@ -463,6 +464,63 @@ describe('AudioDeck getVolumeLevel()', () => {
     deck.analyserNode.getByteFrequencyData = (arr) => arr.fill(128);
     fire(deck, 'play');
     expect(deck.getVolumeLevel()).toBeCloseTo(128 / 255, 10);
+  });
+});
+
+describe('AudioDeck object URL lifecycle', () => {
+  it('tracks the blob URL created for a file track', async () => {
+    const { deck } = makeDeck();
+    await deck.loadTrack(FILE_TRACK);
+    expect(deck.objectUrl).toBe('blob:mock-url');
+  });
+
+  it('revokes the old blob URL when a new track loads', async () => {
+    const { deck } = makeDeck();
+    globalThis.fetch.mockReturnValue(new Promise(() => {})); // keep decode pending
+
+    await deck.loadTrack(FILE_TRACK);
+    expect(deck.objectUrl).toBe('blob:mock-url');
+
+    // Loading a stream-URL track: the old blob URL must be released.
+    await deck.loadTrack(URL_TRACK);
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(deck.objectUrl).toBeNull();
+
+    // And no revoke happened again before that load (clean accounting).
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
+  });
+
+  it('revokes the old blob URL when another file track loads', async () => {
+    const { deck } = makeDeck();
+    const secondFile = { file: { arrayBuffer: async () => new ArrayBuffer(8) }, bpm: 130 };
+
+    await deck.loadTrack(FILE_TRACK);
+    await deck.loadTrack(secondFile);
+
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(deck.objectUrl).toBe('blob:mock-url'); // fresh URL for the new track
+    expect(deck.audio.src).toBe('blob:mock-url');
+  });
+
+  it('does not revoke anything when no file was ever loaded', async () => {
+    const { deck } = makeDeck();
+    globalThis.fetch.mockReturnValue(new Promise(() => {}));
+    await deck.loadTrack(URL_TRACK);
+    expect(globalThis.URL.revokeObjectURL).not.toHaveBeenCalled();
+    expect(() => deck.revokeObjectUrl()).not.toThrow();
+  });
+
+  it('destroy() revokes the tracked blob URL and clears the reference', async () => {
+    const { deck } = makeDeck();
+    await deck.loadTrack(FILE_TRACK);
+
+    deck.destroy();
+
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(deck.objectUrl).toBeNull();
+    // Second destroy stays safe (no double revoke).
+    expect(() => deck.destroy()).not.toThrow();
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledTimes(1);
   });
 });
 
