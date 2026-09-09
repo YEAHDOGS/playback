@@ -3,9 +3,12 @@
   import { Play, Pause, RotateCcw, Music } from 'lucide-svelte';
 
   // Svelte 5 props
-  let { 
-    deckState = {}, 
-    deck = null 
+  let {
+    deckState = {},
+    deck = null,
+    engine = null,        // DjEngine — used for cross-deck sync
+    syncSourceId = null,  // id of the deck to sync TO ('deck1' | 'deck2')
+    syncSourceBpm = null  // fallback BPM when no engine is wired up
   } = $props();
 
   let isScratching = $state(false);
@@ -137,6 +140,18 @@
 
     if (deckState.playing) {
       deck.play();
+    }
+  }
+
+  // Sync this deck's tempo to the other deck's live BPM
+  function handleSync() {
+    if (!deck || !syncSourceId) return;
+    if (engine && typeof engine.syncDecks === 'function') {
+      engine.syncDecks(syncSourceId);
+    } else {
+      // Fallback when no engine is wired: match the other deck's current BPM directly
+      const targetBpm = syncSourceBpm ?? deckState.currentBpm ?? deck.bpm;
+      deck.syncTo(targetBpm);
     }
   }
 
@@ -361,7 +376,7 @@
       <!-- Sync Button -->
       <button 
         class="flex-1 py-1.5 rounded border text-[10px] font-display uppercase tracking-wider font-extrabold transition-all {deckState.playing ? 'bg-[#111116]/80 text-[var(--color-neon-red)] border-[var(--color-neon-red)] shadow-[0_0_8px_var(--color-neon-red-glow)]' : 'bg-[#111116] border-[var(--border-color)] text-[var(--color-text-muted)]'} {deckState.loadedTrack ? 'hover:border-[#ff2a3b] hover:text-[#ff2a3b]' : ''}"
-        onclick={() => deck.syncTo(deckState.id === 'deck1' ? 128 : 120)} 
+        onclick={handleSync} 
         disabled={!deckState.loadedTrack}
       >
         {$t('controls.sync')}
