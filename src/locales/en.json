@@ -50,5 +50,15 @@
     "theme_daytime": "Daytime (Icy White)",
     "language": "Language",
     "close": "Close"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "close": "Close shortcuts",
+    "play_pause": "Play / Pause (Deck 1)",
+    "seek": "Back / Forward 10s (Deck 1)",
+    "volume": "Master volume down / up",
+    "mute": "Mute / Unmute master",
+    "overlay": "Show this guide",
+    "hint": "Play, seek and volume keys act on Deck 1. Shortcuts stay quiet while you type in any text field — press ? to open this guide anytime."
   }
 }
