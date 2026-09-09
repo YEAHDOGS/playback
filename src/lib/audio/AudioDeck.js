@@ -30,6 +30,7 @@ export default class AudioDeck {
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
     this.objectUrl = null; // blob URL we created for a local file (must be revoked)
+    this.decodeToken = 0; // generation counter invalidating stale async waveform decodes
 
     // HTML5 Audio Element
     this.audio = new Audio();
@@ -160,14 +161,19 @@ export default class AudioDeck {
     this.audio.load();
     this.notifyChange();
 
-    // Decode waveform asynchronously
-    this.decodeWaveform(track);
+    // Decode waveform asynchronously, stamped with this load's generation token
+    // so a slow decode from a previous track can never overwrite the new one.
+    const decodeToken = ++this.decodeToken;
+    this.decodeWaveform(track, decodeToken);
   }
 
   /**
    * Decode track audio data to compute waveform peaks
+   * @param {Object} track - The track to decode
+   * @param {number} token - Generation token; results are ignored if the deck
+   *   has started a newer decode since (prevents stale-track waveform races)
    */
-  async decodeWaveform(track) {
+  async decodeWaveform(track, token) {
     this.isDecoding = true;
     this.notifyChange();
 
@@ -182,6 +188,9 @@ export default class AudioDeck {
 
       // Decode audio data safely
       this.audioContext.decodeAudioData(arrayBuffer, (audioBuffer) => {
+        // Stale decode (track swapped while decoding): ignore, the newer
+        // load owns the waveform state.
+        if (token !== this.decodeToken) return;
         const channelData = audioBuffer.getChannelData(0);
         const step = Math.ceil(channelData.length / 300); // Downsample to 300 points
         const peaks = [];
@@ -201,10 +210,12 @@ export default class AudioDeck {
         this.isDecoding = false;
         this.notifyChange();
       }, (e) => {
+        if (token !== this.decodeToken) return;
         console.warn("Waveform decoding failed, using synthetic peaks", e);
         this.generateSyntheticPeaks();
       });
     } catch (e) {
+      if (token !== this.decodeToken) return;
       console.warn("Could not retrieve file data for waveform, generating synthetic", e);
       this.generateSyntheticPeaks();
     }
