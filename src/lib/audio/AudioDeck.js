@@ -27,6 +27,8 @@ export default class AudioDeck {
     this.eqMid = 0;  // -12dB to +12dB
     this.eqHigh = 0; // -12dB to +12dB
     this.cuePoint = 0; // Cue position in seconds
+    this.loopIn = null; // Loop-in point in seconds (null = unset)
+    this.loopOut = null; // Loop-out point in seconds (null = unset)
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
     this.loadError = null; // MEDIA_ERR_* code object from the last failed load, if any
@@ -104,6 +106,7 @@ export default class AudioDeck {
   setupListeners() {
     this.audio.addEventListener('timeupdate', () => {
       this.currentTime = this.audio.currentTime;
+      this.enforceLoop();
       this.notifyChange();
     });
 
@@ -153,6 +156,8 @@ export default class AudioDeck {
     this.updateBpm();
     this.currentTime = 0;
     this.cuePoint = 0;
+    this.loopIn = null; // a new track starts with no loop armed
+    this.loopOut = null;
     this.waveformPeaks = [];
     this.loadError = null; // a new load clears the previous track's error state
 
@@ -327,6 +332,59 @@ export default class AudioDeck {
     this.notifyChange();
   }
 
+  /**
+   * Sets the loop-in point at the current playback position.
+   * If a loop-out already exists and the new loop-in is at/after it,
+   * the stale loop-out is dropped — a loop must always run forward.
+   */
+  setLoopIn() {
+    this.loopIn = this.audio.currentTime;
+    if (this.loopOut !== null && this.loopOut <= this.loopIn) this.loopOut = null;
+    this.notifyChange();
+  }
+
+  /**
+   * Sets the loop-out point at the current playback position.
+   * Ignored when no loop-in is set or the position is not strictly after
+   * the loop-in (a zero/negative-length loop would spin forever).
+   */
+  setLoopOut() {
+    if (this.loopIn === null) return;
+    const out = this.audio.currentTime;
+    if (out <= this.loopIn) return;
+    this.loopOut = out;
+    this.notifyChange();
+  }
+
+  /**
+   * Clears the active loop (if any), leaving playback position untouched.
+   */
+  exitLoop() {
+    if (this.loopIn === null && this.loopOut === null) return;
+    this.loopIn = null;
+    this.loopOut = null;
+    this.notifyChange();
+  }
+
+  /**
+   * True while a valid forward loop (in < out) is armed.
+   */
+  get isLooping() {
+    return this.loopIn !== null && this.loopOut !== null && this.loopOut > this.loopIn;
+  }
+
+  /**
+   * Re-seeks to the loop-in point when playback reaches the loop-out point.
+   * Called on each timeupdate while the deck is live.
+   */
+  enforceLoop() {
+    if (!this.isLooping) return;
+    if (this.audio.currentTime >= this.loopOut) {
+      this.audio.currentTime = this.loopIn;
+      this.currentTime = this.loopIn;
+    }
+  }
+
   playCue() {
     if (!this.loadedTrack) return;
     this.audio.currentTime = this.cuePoint;
@@ -417,6 +475,9 @@ export default class AudioDeck {
       eqMid: this.eqMid,
       eqHigh: this.eqHigh,
       cuePoint: this.cuePoint,
+      loopIn: this.loopIn,
+      loopOut: this.loopOut,
+      looping: this.isLooping,
       isDecoding: this.isDecoding,
       waveformPeaks: this.waveformPeaks,
       loadError: this.loadError
