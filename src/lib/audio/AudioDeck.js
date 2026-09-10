@@ -27,8 +27,14 @@ export default class AudioDeck {
     this.eqMid = 0;  // -12dB to +12dB
     this.eqHigh = 0; // -12dB to +12dB
     this.cuePoint = 0; // Cue position in seconds
+    this.loopIn = null; // Loop-in point in seconds (null = unset)
+    this.loopOut = null; // Loop-out point in seconds (null = unset)
     this.isDecoding = false;
     this.waveformPeaks = []; // downsampled peaks for visualizer
+    this.loadError = null; // MEDIA_ERR_* code object from the last failed load, if any
+    this.objectUrl = null; // blob URL we created for a local file (must be revoked)
+    this.decodeToken = 0; // generation counter invalidating stale async waveform decodes
+    this.destroyed = false; // lifecycle seal: once destroyed, async work goes silent
 
     // HTML5 Audio Element
     this.audio = new Audio();
@@ -100,6 +106,7 @@ export default class AudioDeck {
   setupListeners() {
     this.audio.addEventListener('timeupdate', () => {
       this.currentTime = this.audio.currentTime;
+      this.enforceLoop();
       this.notifyChange();
     });
 
@@ -123,6 +130,16 @@ export default class AudioDeck {
       this.audio.currentTime = 0;
       this.notifyChange();
     });
+
+    this.audio.addEventListener('error', () => {
+      // The media element failed to load or decode its source (404, CORS,
+      // bad codec). Publish the error so the UI can show a broken-track
+      // state instead of leaving a silently dead deck.
+      const mediaError = this.audio.error;
+      this.loadError = { code: mediaError ? mediaError.code : 0 };
+      this.playing = false;
+      this.notifyChange();
+    });
   }
 
   /**
@@ -139,12 +156,20 @@ export default class AudioDeck {
     this.updateBpm();
     this.currentTime = 0;
     this.cuePoint = 0;
+    this.loopIn = null; // a new track starts with no loop armed
+    this.loopOut = null;
     this.waveformPeaks = [];
+    this.loadError = null; // a new load clears the previous track's error state
+
+    // Revoke any previously created blob URL before loading a new source,
+    // otherwise every track swap leaks one object URL (and its audio bytes).
+    this.revokeObjectUrl();
 
     // Load track source
     if (track.file) {
       // Local File object
       const objectUrl = URL.createObjectURL(track.file);
+      this.objectUrl = objectUrl;
       this.audio.src = objectUrl;
     } else {
       // Stream URL
@@ -154,14 +179,19 @@ export default class AudioDeck {
     this.audio.load();
     this.notifyChange();
 
-    // Decode waveform asynchronously
-    this.decodeWaveform(track);
+    // Decode waveform asynchronously, stamped with this load's generation token
+    // so a slow decode from a previous track can never overwrite the new one.
+    const decodeToken = ++this.decodeToken;
+    this.decodeWaveform(track, decodeToken);
   }
 
   /**
    * Decode track audio data to compute waveform peaks
+   * @param {Object} track - The track to decode
+   * @param {number} token - Generation token; results are ignored if the deck
+   *   has started a newer decode since (prevents stale-track waveform races)
    */
-  async decodeWaveform(track) {
+  async decodeWaveform(track, token) {
     this.isDecoding = true;
     this.notifyChange();
 
@@ -176,6 +206,9 @@ export default class AudioDeck {
 
       // Decode audio data safely
       this.audioContext.decodeAudioData(arrayBuffer, (audioBuffer) => {
+        // Stale decode (track swapped while decoding): ignore, the newer
+        // load owns the waveform state.
+        if (token !== this.decodeToken) return;
         const channelData = audioBuffer.getChannelData(0);
         const step = Math.ceil(channelData.length / 300); // Downsample to 300 points
         const peaks = [];
@@ -195,10 +228,12 @@ export default class AudioDeck {
         this.isDecoding = false;
         this.notifyChange();
       }, (e) => {
+        if (token !== this.decodeToken) return;
         console.warn("Waveform decoding failed, using synthetic peaks", e);
         this.generateSyntheticPeaks();
       });
     } catch (e) {
+      if (token !== this.decodeToken) return;
       console.warn("Could not retrieve file data for waveform, generating synthetic", e);
       this.generateSyntheticPeaks();
     }
@@ -297,6 +332,59 @@ export default class AudioDeck {
     this.notifyChange();
   }
 
+  /**
+   * Sets the loop-in point at the current playback position.
+   * If a loop-out already exists and the new loop-in is at/after it,
+   * the stale loop-out is dropped — a loop must always run forward.
+   */
+  setLoopIn() {
+    this.loopIn = this.audio.currentTime;
+    if (this.loopOut !== null && this.loopOut <= this.loopIn) this.loopOut = null;
+    this.notifyChange();
+  }
+
+  /**
+   * Sets the loop-out point at the current playback position.
+   * Ignored when no loop-in is set or the position is not strictly after
+   * the loop-in (a zero/negative-length loop would spin forever).
+   */
+  setLoopOut() {
+    if (this.loopIn === null) return;
+    const out = this.audio.currentTime;
+    if (out <= this.loopIn) return;
+    this.loopOut = out;
+    this.notifyChange();
+  }
+
+  /**
+   * Clears the active loop (if any), leaving playback position untouched.
+   */
+  exitLoop() {
+    if (this.loopIn === null && this.loopOut === null) return;
+    this.loopIn = null;
+    this.loopOut = null;
+    this.notifyChange();
+  }
+
+  /**
+   * True while a valid forward loop (in < out) is armed.
+   */
+  get isLooping() {
+    return this.loopIn !== null && this.loopOut !== null && this.loopOut > this.loopIn;
+  }
+
+  /**
+   * Re-seeks to the loop-in point when playback reaches the loop-out point.
+   * Called on each timeupdate while the deck is live.
+   */
+  enforceLoop() {
+    if (!this.isLooping) return;
+    if (this.audio.currentTime >= this.loopOut) {
+      this.audio.currentTime = this.loopIn;
+      this.currentTime = this.loopIn;
+    }
+  }
+
   playCue() {
     if (!this.loadedTrack) return;
     this.audio.currentTime = this.cuePoint;
@@ -316,7 +404,22 @@ export default class AudioDeck {
    */
   scrub(percent) {
     if (!this.duration) return;
-    this.audio.currentTime = percent * this.duration;
+    // Clamp: out-of-range platter input must never seek past the track bounds.
+    const clamped = Math.max(0, Math.min(1, percent));
+    this.audio.currentTime = clamped * this.duration;
+    this.currentTime = this.audio.currentTime;
+    this.notifyChange();
+  }
+
+  /**
+   * Moves the playback position by a relative amount, clamped to the
+   * track bounds [0, duration] so seeks can never land out of range.
+   * @param {number} seconds - Positive or negative offset in seconds
+   */
+  seekBy(seconds) {
+    if (!this.duration) return;
+    const next = this.audio.currentTime + seconds;
+    this.audio.currentTime = Math.max(0, Math.min(this.duration, next));
     this.currentTime = this.audio.currentTime;
     this.notifyChange();
   }
@@ -338,7 +441,25 @@ export default class AudioDeck {
     return average / 255; // Normalize to 0..1
   }
 
+  /**
+   * Releases the blob object URL created by the last file-based loadTrack(),
+   * if any. Safe to call repeatedly or when nothing is tracked.
+   */
+  revokeObjectUrl() {
+    if (!this.objectUrl) return;
+    try {
+      URL.revokeObjectURL(this.objectUrl);
+    } catch (e) {
+      console.warn("Could not revoke object URL:", e);
+    } finally {
+      this.objectUrl = null;
+    }
+  }
+
   notifyChange() {
+    // A destroyed deck publishes nothing: late media-element events and
+    // in-flight async decodes must not reach listeners after teardown.
+    if (this.destroyed) return;
     this.onChange({
       id: this.id,
       playing: this.playing,
@@ -354,14 +475,26 @@ export default class AudioDeck {
       eqMid: this.eqMid,
       eqHigh: this.eqHigh,
       cuePoint: this.cuePoint,
+      loopIn: this.loopIn,
+      loopOut: this.loopOut,
+      looping: this.isLooping,
       isDecoding: this.isDecoding,
-      waveformPeaks: this.waveformPeaks
+      waveformPeaks: this.waveformPeaks,
+      loadError: this.loadError
     });
   }
 
   destroy() {
+    // Seal the deck first: any waveform decode still in flight is orphaned
+    // (decodeToken bump invalidates it), and no further state changes or
+    // notifications escape to listeners after this point.
+    this.destroyed = true;
+    this.decodeToken++;
+    this.isDecoding = false;
+
     this.pause();
     this.audio.src = '';
+    this.revokeObjectUrl();
     try {
       this.lowFilter.disconnect();
       this.midFilter.disconnect();

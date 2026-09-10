@@ -6,7 +6,9 @@
   import Mixer from './lib/components/Mixer.svelte';
   import Waveform from './lib/components/Waveform.svelte';
   import TrackList from './lib/components/TrackList.svelte';
-  import { Settings, X, Globe, Moon, Sun, Cable, Play, Music } from 'lucide-svelte';
+  import ShortcutsOverlay from './lib/components/ShortcutsOverlay.svelte';
+  import { createShortcutHandler } from './lib/shortcuts.js';
+  import { Settings, X, Globe, Moon, Sun, Cable, Play, Music, Keyboard } from 'lucide-svelte';
 
   let engine = $state(null);
   let engineState = $state({
@@ -19,6 +21,7 @@
 
   // UI state variables
   let showSettings = $state(false);
+  let showShortcuts = $state(false);
   let activeTheme = $state('Night'); // 'Night' or 'Daytime'
   
   // Mobile tab state: 'deck1' | 'mixer' | 'deck2' | 'library'
@@ -30,7 +33,18 @@
       engineState = state;
     });
 
+    // Global keyboard shortcuts (Space, arrows, M, ?). Handler is pure
+    // logic from lib/shortcuts.js; it stays inert in text fields.
+    const handleKeys = createShortcutHandler({
+      getEngine: () => engine,
+      getDeck: () => engine?.deck1 ?? null,
+      isOverlayOpen: () => showShortcuts,
+      setOverlayOpen: (open) => { showShortcuts = open; }
+    });
+    window.addEventListener('keydown', handleKeys);
+
     return () => {
+      window.removeEventListener('keydown', handleKeys);
       if (engine) engine.destroy();
     };
   });
@@ -121,6 +135,16 @@
       >
         {$t('app.by')}
       </a>
+
+      <!-- Keyboard shortcuts button -->
+      <button 
+        class="p-1.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--color-neon-red)] text-[var(--color-text-muted)] hover:text-[var(--color-neon-red)] bg-[var(--bg-input)] transition-all cursor-pointer"
+        onclick={() => showShortcuts = true}
+        aria-label={$t('shortcuts.title')}
+        title={$t('shortcuts.title')}
+      >
+        <Keyboard class="w-4 h-4" />
+      </button>
 
       <!-- Settings button toggle -->
       <button 
@@ -268,6 +292,9 @@
     {/if}
 
   </div>
+
+  <!-- Keyboard shortcuts help overlay -->
+  <ShortcutsOverlay open={showShortcuts} onClose={() => showShortcuts = false} />
 
   <!-- Settings sliding drawer panel -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
