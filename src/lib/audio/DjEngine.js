@@ -7,12 +7,22 @@ export default class DjEngine {
   constructor(onChange) {
     this.onChange = onChange || (() => {});
     this.initialized = false;
+    this.destroyed = false; // lifecycle seal: once destroyed, init() and notifications stay silent
     this.masterVolume = 0.8;
+    this.prevMasterVolume = 0.8; // restored by toggleMute() after an unmute
     this.crossfader = 0.0; // -1.0 (Left deck only) to +1.0 (Right deck only)
 
     // State placeholders for decks
+    this.deck1 = null;
+    this.deck2 = null;
     this.deck1State = null;
     this.deck2State = null;
+
+    // Audio graph node refs (null until init())
+    this.audioContext = null;
+    this.crossfaderGainL = null;
+    this.crossfaderGainR = null;
+    this.masterGain = null;
   }
 
   /**
@@ -20,7 +30,9 @@ export default class DjEngine {
    * Must be called in response to a user gesture (e.g. clicking "Start DJing" button)
    */
   init() {
-    if (this.initialized) return;
+    // A destroyed engine is sealed: reviving it would reuse a closed
+    // AudioContext, so callers must construct a fresh engine instead.
+    if (this.initialized || this.destroyed) return;
 
     // 1. Create AudioContext (fallback for standard and webkit browsers)
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -77,6 +89,18 @@ export default class DjEngine {
   }
 
   /**
+   * Toggles master mute. Unmuting restores the volume the user had before.
+   */
+  toggleMute() {
+    if (this.masterVolume > 0) {
+      this.prevMasterVolume = this.masterVolume;
+      this.setMasterVolume(0);
+    } else {
+      this.setMasterVolume(this.prevMasterVolume > 0 ? this.prevMasterVolume : 0.8);
+    }
+  }
+
+  /**
    * Set crossfader position
    * @param {number} val - -1.0 (Full Left) to +1.0 (Full Right)
    */
@@ -121,6 +145,9 @@ export default class DjEngine {
   }
 
   notifyEngineChange() {
+    // A destroyed engine publishes nothing: late deck callbacks must not
+    // reach listeners after teardown.
+    if (this.destroyed) return;
     this.onChange({
       initialized: this.initialized,
       masterVolume: this.masterVolume,
@@ -141,5 +168,22 @@ export default class DjEngine {
     } catch (e) {
       console.warn("Error destroying DjEngine context:", e);
     }
+    // A teardown of an initialized engine seals it: release every
+    // graph/node/deck reference, clear published state, and refuse re-init.
+    // Previously destroy() left `initialized` true with a closed
+    // AudioContext, so a later init() silently no-op'd on a dead engine.
+    // Destroying an engine that was never initialized is a no-op that
+    // does not seal it, so a defensive destroy() can't break a later init().
+    const seal = this.initialized;
+    this.deck1 = null;
+    this.deck2 = null;
+    this.deck1State = null;
+    this.deck2State = null;
+    this.crossfaderGainL = null;
+    this.crossfaderGainR = null;
+    this.masterGain = null;
+    this.audioContext = null;
+    this.initialized = false;
+    if (seal) this.destroyed = true;
   }
 }
