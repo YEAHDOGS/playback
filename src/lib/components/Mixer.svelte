@@ -1,6 +1,7 @@
 <script>
   import { t } from '../i18n.js';
   import Knob from './Knob.svelte';
+  import { loadErrorBadgeVisible } from '../featureFlags.js';
 
   // Svelte 5 props
   let {
@@ -15,6 +16,11 @@
 
   let level1 = $state(0);
   let level2 = $state(0);
+
+  // Broken-track badges: opt-in via VITE_SHOW_LOAD_ERROR_BADGE=1, default OFF
+  // (Brandon visual sign-off pending). Absolutely positioned = zero layout shift.
+  let badge1 = $derived(loadErrorBadgeVisible(deck1State));
+  let badge2 = $derived(loadErrorBadgeVisible(deck2State));
 
   // Animation frame loop to update LED volume meters
   let animationFrame;
@@ -79,7 +85,14 @@
   <!-- Main Mixer: Channels & EQs -->
   <div class="flex flex-1 justify-between w-full gap-4 md:gap-6 py-4">
     <!-- Channel 1 EQs -->
-    <div class="flex flex-col items-center justify-between gap-3 flex-1 border-r border-[var(--border-color)] pr-2">
+    <div class="relative flex flex-col items-center justify-between gap-3 flex-1 border-r border-[var(--border-color)] pr-2">
+      {#if badge1}
+        <span
+          role="alert"
+          title={$t('deck.loadErrorBadgeHint')}
+          class="absolute top-1 right-1 z-10 bg-red-600/90 text-white text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap"
+        >⚠ {$t('deck.loadErrorBadge')}</span>
+      {/if}
       <Knob 
         value={deck1State.eqHigh || 0} 
         min={-12} 
@@ -166,7 +179,14 @@
     </div>
 
     <!-- Channel 2 EQs -->
-    <div class="flex flex-col items-center justify-between gap-3 flex-1 border-l border-[var(--border-color)] pl-2">
+    <div class="relative flex flex-col items-center justify-between gap-3 flex-1 border-l border-[var(--border-color)] pl-2">
+      {#if badge2}
+        <span
+          role="alert"
+          title={$t('deck.loadErrorBadgeHint')}
+          class="absolute top-1 left-1 z-10 bg-red-600/90 text-white text-[8px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full whitespace-nowrap"
+        >⚠ {$t('deck.loadErrorBadge')}</span>
+      {/if}
       <Knob 
         value={deck2State.eqHigh || 0} 
         min={-12} 

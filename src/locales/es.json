@@ -41,7 +41,9 @@
     "empty": "Sin Pista Cargada",
     "elapsed": "Transcurrido",
     "remaining": "Restante",
-    "scratch_mode": "Modo Scratch"
+    "scratch_mode": "Modo Scratch",
+    "loadErrorBadge": "Error de carga",
+    "loadErrorBadgeHint": "Esta pista no se pudo cargar. Elige otra pista."
   },
   "settings": {
     "header": "Ajustes",

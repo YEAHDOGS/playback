@@ -41,7 +41,9 @@
     "empty": "No Track Loaded",
     "elapsed": "Elapsed",
     "remaining": "Remaining",
-    "scratch_mode": "Scratch Mode"
+    "scratch_mode": "Scratch Mode",
+    "loadErrorBadge": "Load error",
+    "loadErrorBadgeHint": "This track failed to load. Pick another track."
   },
   "settings": {
     "header": "Settings",
