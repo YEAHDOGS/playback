@@ -252,8 +252,16 @@ export default class AudioDeck {
     this.notifyChange();
   }
 
+  /**
+   * Starts playback. Refuses while the deck is in a known-broken state
+   * (loadError set): the media source already failed to load/decode, so a
+   * play() attempt could never succeed — it would only spam the console and
+   * flip `playing` on a dead deck. Reload the track (which clears the error)
+   * to retry.
+   */
   play() {
     if (!this.loadedTrack) return;
+    if (this.loadError) return;
     
     // Resume audio context if suspended (browser security block)
     if (this.audioContext.state === 'suspended') {
