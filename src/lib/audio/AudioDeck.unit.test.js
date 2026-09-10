@@ -637,6 +637,32 @@ describe('AudioDeck load error surfacing', () => {
     expect(deck.loadError).toBeNull();
     expect(states.at(-1).loadError).toBeNull();
   });
+
+  it('refuses play() while loadError is set', async () => {
+    const { deck, states } = makeDeck();
+    await deck.loadTrack(URL_TRACK);
+    deck.audio.error = { code: 4 }; // MEDIA_ERR_SRC_NOT_SUPPORTED
+    fire(deck, 'error');
+
+    const playSpy = vi.spyOn(deck.audio, 'play');
+    deck.play();
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(deck.playing).toBe(false);
+    expect(states.at(-1).playing).toBe(false);
+  });
+
+  it('allows play() again once loadError clears', async () => {
+    const { deck } = makeDeck();
+    await deck.loadTrack(URL_TRACK);
+    deck.audio.error = { code: 2 }; // MEDIA_ERR_NETWORK
+    fire(deck, 'error');
+    expect(deck.loadError).not.toBeNull();
+
+    await deck.loadTrack(URL_TRACK); // fresh load clears the error
+    const playSpy = vi.spyOn(deck.audio, 'play');
+    deck.play();
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('AudioDeck post-destroy silence', () => {
