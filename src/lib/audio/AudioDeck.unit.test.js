@@ -681,3 +681,142 @@ describe('AudioDeck post-destroy silence', () => {
     expect(states.length).toBe(before);
   });
 });
+
+describe('AudioDeck loop in/out', () => {
+  it('arms a loop and re-seeks to loop-in when playback reaches loop-out', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    expect(deck.isLooping).toBe(true);
+
+    deck.audio.currentTime = 20.25; // past loop-out
+    fire(deck, 'timeupdate');
+
+    expect(deck.audio.currentTime).toBe(10);
+    expect(deck.currentTime).toBe(10);
+  });
+
+  it('does not re-seek while playback stays inside the loop', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    deck.audio.currentTime = 15; // mid-loop
+    fire(deck, 'timeupdate');
+
+    expect(deck.audio.currentTime).toBe(15);
+  });
+
+  it('rejects setLoopOut with no loop-in set', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    expect(deck.loopOut).toBeNull();
+    expect(deck.isLooping).toBe(false);
+  });
+
+  it('rejects a zero/negative-length loop (loop-out at or before loop-in)', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+
+    deck.audio.currentTime = 10; // equal: invalid
+    deck.setLoopOut();
+    expect(deck.loopOut).toBeNull();
+
+    deck.audio.currentTime = 5; // before: invalid
+    deck.setLoopOut();
+    expect(deck.loopOut).toBeNull();
+    expect(deck.isLooping).toBe(false);
+  });
+
+  it('drops a stale loop-out when loop-in moves at/after it', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+    expect(deck.isLooping).toBe(true);
+
+    deck.audio.currentTime = 25; // loop-in now beyond the old loop-out
+    deck.setLoopIn();
+    expect(deck.loopIn).toBe(25);
+    expect(deck.loopOut).toBeNull();
+    expect(deck.isLooping).toBe(false);
+  });
+
+  it('keeps a valid loop when loop-in moves earlier', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    deck.audio.currentTime = 5; // still before loop-out: loop survives
+    deck.setLoopIn();
+    expect(deck.isLooping).toBe(true);
+    expect(deck.loopIn).toBe(5);
+    expect(deck.loopOut).toBe(20);
+  });
+
+  it('exitLoop() clears the loop without moving playback', () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    deck.audio.currentTime = 15;
+    deck.exitLoop();
+
+    expect(deck.loopIn).toBeNull();
+    expect(deck.loopOut).toBeNull();
+    expect(deck.isLooping).toBe(false);
+    expect(deck.audio.currentTime).toBe(15);
+
+    // No loop armed: reaching past the old loop-out does nothing
+    deck.audio.currentTime = 21;
+    fire(deck, 'timeupdate');
+    expect(deck.audio.currentTime).toBe(21);
+  });
+
+  it('exitLoop() is a no-op with no notifications when nothing is armed', () => {
+    const { deck, states } = makeDeck();
+    const before = states.length;
+    deck.exitLoop();
+    expect(states.length).toBe(before);
+  });
+
+  it('publishes loopIn/loopOut/looping in the deck state', () => {
+    const { deck, states } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+
+    const last = states.at(-1);
+    expect(last.loopIn).toBe(10);
+    expect(last.loopOut).toBe(20);
+    expect(last.looping).toBe(true);
+  });
+
+  it('loadTrack() clears any armed loop', async () => {
+    const { deck } = makeDeck();
+    deck.audio.currentTime = 10;
+    deck.setLoopIn();
+    deck.audio.currentTime = 20;
+    deck.setLoopOut();
+    expect(deck.isLooping).toBe(true);
+
+    await deck.loadTrack(URL_TRACK);
+    expect(deck.loopIn).toBeNull();
+    expect(deck.loopOut).toBeNull();
+    expect(deck.isLooping).toBe(false);
+  });
+});
