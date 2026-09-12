@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Playback — your decks, in the browser</title>
-  <meta name="description" content="Playback is a web-based DJ interface: two decks, a mixer, and Web Audio underneath. Work in progress, more information estimated 2027.">
+  <meta name="description" content="Playback is a web-based DJ interface: two decks, a mixer, and Web Audio underneath. A work in progress — more information estimated 2027.">
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#0d0b08">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
@@ -12,7 +12,7 @@
   <meta property="og:site_name" content="Playback">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Playback — your decks, in the browser">
-  <meta property="og:description" content="Playback is a web-based DJ interface: two decks, a mixer, and Web Audio underneath. Work in progress, more information estimated 2027.">
+  <meta property="og:description" content="Playback is a web-based DJ interface: two decks, a mixer, and Web Audio underneath. A work in progress — more information estimated 2027.">
   <meta property="og:url" content="https://playback.wearedogs.net/">
   <meta property="og:image" content="https://playback.wearedogs.net/og.png">
   <meta property="og:image:width" content="1200">
@@ -21,55 +21,62 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <a class="skip" href="#content">Skip to content</a>
+  <a class="skip" href="#p1">Skip to content</a>
+
   <header class="site">
     <div class="nav">
       <div class="brand">
         <a class="wordmark" href="https://wearedogs.net">
-          <span class="badge"><img src="./dogs-logo.svg" alt="DOGS logo: a black-and-white Labrador with its tongue out" width="30" height="30" decoding="async"></span>
+          <span class="badge"><img src="./dogs-logo.svg" alt="DOGS logo: a black-and-white Labrador with its tongue out" width="28" height="28" decoding="async"></span>
           <span>DOGS</span>
         </a>
         <span class="sep" aria-hidden="true">/</span>
         <a class="project" href="./">Playback</a>
       </div>
-      <nav aria-label="Primary">
-        <a href="#engine">Engine</a>
-        <a href="#plan">Plan</a>
-        <a href="./privacy.html">Privacy</a>
-        <a href="https://github.com/YEAHDOGS/playback">GitHub</a>
-      </nav>
+      <a class="btn small" href="#p7">Get notified</a>
     </div>
   </header>
 
   <main id="content">
-    <section class="hero" id="top" aria-label="Playback">
-      <div class="wrap hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow">DOGS &middot; a web-based DJ interface</p>
-          <h1>Your decks, in the browser.</h1>
-          <p class="lede">Playback is a DJ rig built on the web. Two decks, a mixer, and the Web Audio graph underneath. A work in progress.</p>
-          <p class="badge-line"><span class="pip" aria-hidden="true"></span> Building now &middot; more information estimated 2027</p>
-          <p class="cta-row">
-            <a class="btn" href="#notify">Get notified</a>
-            <a class="btn ghost" href="https://github.com/YEAHDOGS/playback">GitHub</a>
-          </p>
-        </div>
-        <div class="booth reveal" aria-label="Simulated deck preview">
+
+    <!-- 1 · PLAYBACK -->
+    <section class="panel snap" id="p1" aria-label="Playback">
+      <div class="bg" aria-hidden="true"><img src="./img/booth.jpg" alt="" fetchpriority="high"></div>
+      <div class="scrim b" aria-hidden="true"></div>
+      <div class="frame bl">
+        <p class="kicker reveal">A web-based DJ interface</p>
+        <h1 class="word reveal d1">PLAYBACK</h1>
+        <p class="line reveal d2">Your decks, in the browser.</p>
+        <p class="cta reveal d3"><a class="btn" href="#p7">Get notified</a></p>
+      </div>
+      <div class="cue" aria-hidden="true"><span></span></div>
+    </section>
+
+    <!-- 2 · DECK (interactive) -->
+    <section class="panel snap" id="p2" aria-label="Touch the deck">
+      <div class="bg" aria-hidden="true"><img src="./img/platter.jpg" alt="" loading="lazy" decoding="async"></div>
+      <div class="scrim r" aria-hidden="true"></div>
+      <div class="frame tr">
+        <h2 class="word sm reveal">DECKS</h2>
+        <p class="line reveal d1">Go ahead. Touch it.</p>
+      </div>
+      <div class="frame br">
+        <div class="booth reveal d2" aria-label="Simulated deck preview">
           <div class="booth-head">
             <span class="deck-tag">DECK A</span>
-            <span class="sim">Simulated preview &middot; no audio</span>
+            <span class="sim">Simulated &middot; no audio</span>
           </div>
-          <div class="platter-stage">
+          <div class="platter-row">
             <div class="platter" id="platter" aria-hidden="true">
-              <span class="label"><strong>PLAYBACK</strong><em>33&#8531;</em></span>
+              <span class="plabel"><strong>PLAYBACK</strong><em>33&#8531;</em></span>
             </div>
             <button class="playbtn" id="playbtn" type="button" aria-pressed="false" aria-label="Play simulated deck">
-              <span class="icon" aria-hidden="true"></span>
-              <span class="txt">Play</span>
+              <span class="pic" aria-hidden="true"></span>
+              <span class="ptx">Play</span>
             </button>
           </div>
           <canvas class="wave" id="wave" width="560" height="72" aria-hidden="true"></canvas>
@@ -90,96 +97,101 @@
           </div>
         </div>
       </div>
-      <div class="scrollcue" aria-hidden="true"><span></span></div>
     </section>
 
-    <section class="panel" id="engine" aria-labelledby="engine-h">
-      <div class="wrap">
-        <p class="eyebrow">The engine</p>
-        <h2 id="engine-h">Under the platter.</h2>
-        <p class="lede narrow">What the code already does, in the open source repo.</p>
-        <dl class="specs">
-          <div class="spec reveal">
-            <dt>Two decks</dt>
-            <dd>Independent decks with cue points and loop in/out.</dd>
-          </div>
-          <div class="spec reveal">
-            <dt>Pitch</dt>
-            <dd>&plusmn;16% range. BPM aware.</dd>
-          </div>
-          <div class="spec reveal">
-            <dt>3-band EQ</dt>
-            <dd>Low, mid, high. &minus;12 to +12 dB each.</dd>
-          </div>
-          <div class="spec reveal">
-            <dt>The graph</dt>
-            <dd>Decks into crossfader gains into master. Pure Web Audio.</dd>
-          </div>
-          <div class="spec reveal">
-            <dt>Keyboard first</dt>
-            <dd>Space, arrows, M, ?. Hands stay on the keys.</dd>
-          </div>
-          <div class="spec reveal">
-            <dt>Local files</dt>
-            <dd>Drop a track in. It plays and draws its waveform.</dd>
-          </div>
-        </dl>
+    <!-- 3 · GRAPH -->
+    <section class="panel snap" id="p3" aria-label="The audio graph">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="frame mr">
+        <h2 class="word sm reveal">GRAPH</h2>
+        <p class="line reveal d1">Two decks into a crossfader into master.</p>
+        <p class="sub reveal d2">Pure Web Audio. The code is already public.</p>
+        <ul class="hits reveal d3">
+          <li><strong>&plusmn;16%</strong> pitch</li>
+          <li><strong>3-band</strong> EQ</li>
+          <li><strong>Cue</strong> + loop</li>
+          <li><strong>Keyboard</strong> first</li>
+        </ul>
+        <p class="cta reveal d4"><a class="btn ghost" href="https://github.com/YEAHDOGS/playback">Read the code</a></p>
       </div>
     </section>
 
-    <section class="panel alt" id="plan" aria-labelledby="plan-h">
-      <div class="wrap split">
-        <div>
-          <p class="eyebrow">The roadmap</p>
-          <h2 id="plan-h">One deck across every catalog.</h2>
-          <p class="lede">Playback is being built to wire into the services you already use: Spotify, SoundCloud, Tidal, Apple Music, and more. That wiring is not shipped yet. The deck is real; the integrations are next.</p>
+    <!-- 4 · KEYS -->
+    <section class="panel snap" id="p4" aria-label="Keyboard first">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="frame tl">
+        <h2 class="word sm reveal">KEYS</h2>
+        <p class="line reveal d1">Hands stay on the keys.</p>
+        <div class="keys reveal d2" aria-label="Keyboard shortcuts">
+          <div class="key"><kbd>Space</kbd><span>play / pause</span></div>
+          <div class="key"><kbd>&larr; &rarr;</kbd><span>nudge pitch</span></div>
+          <div class="key"><kbd>M</kbd><span>mute master</span></div>
+          <div class="key"><kbd>?</kbd><span>every shortcut</span></div>
         </div>
-        <ol class="timeline">
-          <li class="done"><span class="dot" aria-hidden="true"></span><strong>Idea</strong><span class="when">2025 &middot; done</span></li>
-          <li class="done"><span class="dot" aria-hidden="true"></span><strong>Repo live</strong><span class="when">2026 &middot; done</span></li>
-          <li class="now"><span class="dot" aria-hidden="true"></span><strong>Building</strong><span class="when">Now &middot; in progress</span></li>
-          <li class="future"><span class="dot" aria-hidden="true"></span><strong>More information</strong><span class="when">Estimated 2027</span></li>
+      </div>
+    </section>
+
+    <!-- 5 · SOURCES -->
+    <section class="panel snap" id="p5" aria-label="Streaming integrations">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="frame bl">
+        <h2 class="word sm reveal">NEXT</h2>
+        <p class="line reveal d1">One deck across every catalog.</p>
+        <p class="sub reveal d2">The wiring is not shipped yet. Local files play today.</p>
+        <ul class="chips reveal d3" aria-label="Planned integrations">
+          <li>Spotify</li>
+          <li>SoundCloud</li>
+          <li>Tidal</li>
+          <li>Apple Music</li>
+          <li class="dim">and more</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6 · 2027 -->
+    <section class="panel snap" id="p6" aria-label="Roadmap">
+      <div class="bg" aria-hidden="true"><img src="./img/crowd.jpg" alt="" loading="lazy" decoding="async"></div>
+      <div class="scrim b" aria-hidden="true"></div>
+      <div class="frame bl">
+        <h2 class="word sm reveal">2027</h2>
+        <p class="line reveal d1">Still building. Honestly.</p>
+        <ol class="steps reveal d2">
+          <li class="done"><span class="dot" aria-hidden="true"></span><strong>Repo live</strong><span class="when">2026</span></li>
+          <li class="now"><span class="dot" aria-hidden="true"></span><strong>Building</strong><span class="when">now</span></li>
+          <li class="future"><span class="dot" aria-hidden="true"></span><strong>More information</strong><span class="when">2027</span></li>
         </ol>
       </div>
     </section>
 
-    <section class="panel notify" id="notify" aria-labelledby="notify-h">
-      <div class="wrap">
-        <p class="eyebrow">Stay in the loop</p>
-        <h2 id="notify-h">Get notified.</h2>
-        <p class="lede narrow">Playback is still asleep. Leave an email and hear it when it wakes up.</p>
-        <form data-notify novalidate>
+    <!-- 7 · FIRST (notify) -->
+    <section class="panel snap" id="p7" aria-label="Get notified">
+      <div class="bg flat" aria-hidden="true"></div>
+      <div class="frame c">
+        <h2 class="word sm reveal">FIRST</h2>
+        <p class="line reveal d1">Hear it when it wakes up.</p>
+        <form class="notify reveal d2" data-notify novalidate>
+          <label for="email">Email address</label>
           <div class="fields">
-            <div>
-              <label for="email">Email address</label>
-              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="email-error">
-            </div>
-            <button type="submit"><span class="spinner" aria-hidden="true"></span><span>Notify me</span></button>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="email-error email-note">
+            <button type="submit"><span>Notify me</span></button>
           </div>
           <p class="field-error" id="email-error" aria-live="polite"></p>
+          <p class="note" id="email-note">Saved on this device only. No account, no spam.</p>
         </form>
-        <div class="foot">
-          <p class="madeby">
-            <span class="badge"><img src="./dogs-logo.svg" alt="DOGS logo: a black-and-white Labrador with its tongue out" width="22" height="22" loading="lazy" decoding="async"></span>
-            This product was made by <a href="https://wearedogs.net">DOGS</a>
-          </p>
-          <nav aria-label="Footer">
-            <a href="./">Home</a>
-            <a href="#engine">Engine</a>
-            <a href="./privacy.html">Privacy</a>
-            <a href="./terms.html">Terms</a>
-            <a href="https://github.com/YEAHDOGS/playback">GitHub</a>
-          </nav>
-          <p class="small">No cookies. No tracking. No login.<br>&copy; 2026 DOGS &middot; Playback is a work in progress.</p>
-        </div>
+        <p class="madeby reveal d3">
+          <a href="https://wearedogs.net"><img src="./made-by-dogs.png" alt="This product was made by DOGS" width="192" height="64" loading="lazy" decoding="async"></a>
+        </p>
+        <nav class="footnav reveal d4" aria-label="Footer">
+          <a href="./">Home</a>
+          <a href="./privacy.html">Privacy</a>
+          <a href="./terms.html">Terms</a>
+          <a href="https://github.com/YEAHDOGS/playback">GitHub</a>
+        </nav>
+        <p class="small reveal d4">No cookies. No tracking. No login. &copy; 2026 DOGS.</p>
       </div>
     </section>
-  </main>
 
-  <div class="stickbar" id="stickbar" hidden>
-    <span>Playback is a work in progress.</span>
-    <a class="btn small" href="#notify">Get notified</a>
-  </div>
+  </main>
 
   <script src="./app.js" defer></script>
 </body>
