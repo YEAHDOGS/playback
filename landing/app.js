@@ -1,11 +1,11 @@
-// Playback landing — simulated deck widget, reveals, sticky CTA, notify form.
+// Playback landing — snap panels, parallax drift, clip reveals, simulated deck, honest notify.
 // The booth is a simulation: no audio is generated. Honest labeling everywhere.
 (function () {
   'use strict';
 
   var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- reveal on scroll (transform/opacity only) ---------- */
+  /* ---------- staggered clip reveals (transform/opacity only) ---------- */
   var revealEls = document.querySelectorAll('.reveal');
   if (REDUCED || !('IntersectionObserver' in window)) {
     revealEls.forEach(function (el) { el.classList.add('in'); });
@@ -14,8 +14,35 @@
       entries.forEach(function (en) {
         if (en.isIntersecting) { en.target.classList.add('in'); rio.unobserve(en.target); }
       });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    }, { threshold: 0.08, rootMargin: '0px 0px 0px 0px' });
     revealEls.forEach(function (el) { rio.observe(el); });
+  }
+
+  /* ---------- scroll-linked parallax bg drift (transform only, rAF-throttled) ---------- */
+  var bgs = Array.prototype.slice.call(document.querySelectorAll('.panel .bg img'));
+  var bgPanels = bgs.map(function (img) {
+    var panel = img.closest('.panel');
+    return { img: img, panel: panel };
+  });
+  if (REDUCED || !bgPanels.length) {
+    bgs.forEach(function (img) { img.style.transform = 'none'; });
+  } else {
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var vh = window.innerHeight;
+      bgPanels.forEach(function (b) {
+        var r = b.panel.getBoundingClientRect();
+        if (r.bottom < -vh || r.top > 2 * vh) return; // offscreen-ish: skip
+        var progress = (r.top + r.height / 2 - vh / 2) / vh; // -0.5..0.5 at rest
+        var shift = Math.max(-1, Math.min(1, progress)) * vh * 0.08;
+        b.img.style.transform = 'translate3d(0,' + shift.toFixed(1) + 'px,0)';
+      });
+    }
+    function requestTick() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    window.addEventListener('scroll', requestTick, { passive: true });
+    window.addEventListener('resize', requestTick);
+    update();
   }
 
   /* ---------- simulated deck ---------- */
@@ -39,14 +66,27 @@
       playing = on;
       playbtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       playbtn.setAttribute('aria-label', on ? 'Pause simulated deck' : 'Play simulated deck');
-      var txt = playbtn.querySelector('.txt');
+      var txt = playbtn.querySelector('.ptx');
       if (txt) txt.textContent = on ? 'Pause' : 'Play';
       last = performance.now();
       if (on) kick();
-      else { ticking = false; drawWaveIdle(); }
+      else { spinOn = false; drawWaveIdle(); }
     }
 
     playbtn.addEventListener('click', function () { setPlaying(!playing); });
+
+    // Keyboard shortcuts — the honest version of the KEYS panel.
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+      else if (e.key === 'ArrowLeft') { bpm = Math.max(60, bpm - 1); renderBpm(); }
+      else if (e.key === 'ArrowRight') { bpm = Math.min(180, bpm + 1); renderBpm(); }
+      else if (e.key === 'm' || e.key === 'M') {
+        var booth = playbtn.closest('.booth');
+        if (booth) booth.classList.toggle('muted');
+      }
+    });
 
     var down = document.getElementById('bpm-down');
     var up = document.getElementById('bpm-up');
@@ -67,9 +107,9 @@
     if (xf) { xf.addEventListener('input', renderXf); renderXf(); }
 
     // Spin: transform-only, paused when hidden or reduced-motion.
-    var ticking = false;
+    var spinOn = false;
     function tick(now) {
-      if (!playing) { ticking = false; return; }
+      if (!playing) { spinOn = false; return; }
       var dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       angle = (angle + dt * (BASE_RPM / 60) * 360 * (bpm / 120)) % 360;
@@ -78,8 +118,8 @@
       requestAnimationFrame(tick);
     }
     function kick() {
-      if (ticking || !playing) return;
-      ticking = true;
+      if (spinOn || !playing) return;
+      spinOn = true;
       last = performance.now();
       requestAnimationFrame(tick);
     }
@@ -89,7 +129,7 @@
       var vio = new IntersectionObserver(function (entries) {
         entries.forEach(function (en) {
           if (en.isIntersecting) kick();
-          else ticking = false;
+          else spinOn = false;
         });
       });
       vio.observe(platter);
@@ -101,58 +141,41 @@
     var seed = [];
     for (var i = 0; i < BARS; i++) seed.push(Math.random());
 
-    function barHeights(t, live) {
-      var out = [];
-      for (var i = 0; i < BARS; i++) {
-        var base = 0.25 + 0.75 * Math.abs(Math.sin(i * 0.55 + seed[i] * 6.28));
-        var motion = live ? 0.35 * Math.abs(Math.sin(t / 420 + i * 0.35)) : 0;
-        out.push(Math.min(1, base * 0.75 + motion));
-      }
-      return out;
-    }
-
     function drawBars(t, live) {
       if (!ctx) return;
       var w = wave.width, h = wave.height;
       ctx.clearRect(0, 0, w, h);
-      var hs = barHeights(t, live);
       var bw = w / BARS;
       ctx.fillStyle = live ? '#f0a33c' : 'rgba(242,237,225,0.28)';
-      for (var i = 0; i < BARS; i++) {
-        var bh = hs[i] * (h - 8);
-        ctx.fillRect(i * bw + bw * 0.25, (h - bh) / 2, bw * 0.5, bh);
+      for (var j = 0; j < BARS; j++) {
+        var base = 0.25 + 0.75 * Math.abs(Math.sin(j * 0.55 + seed[j] * 6.28));
+        var motion = live ? 0.35 * Math.abs(Math.sin(t / 420 + j * 0.35)) : 0;
+        var bh = Math.min(1, base * 0.75 + motion) * (h - 8);
+        ctx.fillRect(j * bw + bw * 0.25, (h - bh) / 2, bw * 0.5, bh);
       }
     }
 
     function drawWave(now) { drawBars(now, true); }
     function drawWaveIdle() { drawBars(0, false); }
-
-    if (REDUCED) {
-      drawWaveIdle(); // static, never animated
-    } else {
-      drawWaveIdle();
-    }
+    drawWaveIdle();
   }
 
-  /* ---------- sticky mobile CTA ---------- */
-  var stick = document.getElementById('stickbar');
-  var notify = document.getElementById('notify');
-  if (stick && notify && 'IntersectionObserver' in window) {
-    stick.hidden = false;
-    var sio = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        stick.classList.toggle('off', en.isIntersecting);
-      });
-    }, { threshold: 0.08 });
-    sio.observe(notify);
-  }
-
-  /* ---------- notify form: front-end only, no backend yet ---------- */
+  /* ---------- notify form: honest localStorage capture, no backend yet ---------- */
   var form = document.querySelector('form[data-notify]');
   if (!form) return;
   var email = form.querySelector('input[type="email"]');
   var error = form.querySelector('.field-error');
   var button = form.querySelector('button');
+
+  // If already saved on this device, say so instead of the form.
+  try {
+    var saved = window.localStorage.getItem('playback-notify');
+    if (saved) {
+      form.innerHTML = '<p class="done-msg">You are on the list (' + saved.replace(/</g, '&lt;') +
+        '). We will ping you here when Playback wakes up.</p>';
+      return;
+    }
+  } catch (e) { /* storage unavailable — form still works for the session */ }
 
   function setError(msg) {
     error.textContent = msg;
@@ -172,7 +195,7 @@
     }
     setError('');
     button.disabled = true;
-    button.classList.add('loading');
-    setTimeout(function () { window.location.href = './thanks.html'; }, 800);
+    try { window.localStorage.setItem('playback-notify', value); } catch (err) { /* session-only */ }
+    form.innerHTML = '<p class="done-msg">Saved on this device. First ping when Playback wakes up.</p>';
   });
 })();
